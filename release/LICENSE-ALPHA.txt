@@ -1,0 +1,39 @@
+TkSpeed — LICENÇA DE TESTE ALPHA
+=================================
+
+Versão: 0.1.0-alpha
+© 2026 TkSpeed. Todos os direitos reservados.
+
+1. CONCESSÃO
+   Você recebeu uma cópia ALPHA do TkSpeed exclusivamente para AVALIAÇÃO e
+   TESTE pessoal. Não é permitido redistribuir, revender ou publicar este
+   software ou seus instaladores sem autorização por escrito.
+
+2. NATUREZA PRÉ-LANÇAMENTO
+   Este é um software EM DESENVOLVIMENTO, fornecido "COMO ESTÁ", sem garantias
+   de qualquer tipo, expressas ou implícitas. Pode conter erros e comportamentos
+   inesperados.
+
+3. ALTERAÇÕES NO SISTEMA E REVERSIBILIDADE
+   O TkSpeed pode aplicar otimizações no Windows (ex.: plano de energia,
+   configurações de jogo, limpeza de arquivos temporários). TODAS as alterações
+   são projetadas para serem REVERSÍVEIS (snapshot + rollback; arquivos vão para
+   quarentena, não são apagados de imediato). Ainda assim, por se tratar de uma
+   versão Alpha, recomenda-se testar primeiro em máquinas não-críticas.
+
+4. LIMITAÇÃO DE RESPONSABILIDADE
+   Na máxima extensão permitida pela lei, os autores não se responsabilizam por
+   quaisquer danos diretos ou indiretos decorrentes do uso desta versão Alpha.
+   O uso é por sua conta e risco.
+
+5. PRIVACIDADE / TELEMETRIA
+   Os dados (hardware, telemetria, scores, benchmarks, histórico) ficam LOCAIS,
+   no seu dispositivo (%APPDATA%\TkSpeed). Nada é enviado automaticamente. O
+   diagnóstico só sai da sua máquina se VOCÊ rodar o script de exportação e
+   enviar o arquivo voluntariamente. Não há coleta de dados pessoais.
+
+6. FEEDBACK
+   Sugestões e relatos enviados podem ser usados para melhorar o produto, sem
+   obrigação de compensação.
+
+Ao instalar ou usar esta versão Alpha, você concorda com estes termos.

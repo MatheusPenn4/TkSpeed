@@ -1,0 +1,14 @@
+[package]
+name = "tk-optimize"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tk-contracts = { path = "../tk-contracts" }
+tk-storage = { path = "../tk-storage" }
+tk-platform-win = { path = "../tk-platform-win" }
+tk-rollback = { path = "../tk-rollback" }
+tk-perflab = { path = "../tk-perflab" }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }

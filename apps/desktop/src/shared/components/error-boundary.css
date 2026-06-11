@@ -1,0 +1,57 @@
+.fatal {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--s-8);
+}
+
+.fatal-card {
+  max-width: 460px;
+  text-align: center;
+  padding: var(--s-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  border-color: rgba(255, 77, 77, 0.25);
+}
+
+.fatal-icon {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 26px;
+  color: var(--danger);
+  background: rgba(255, 77, 77, 0.1);
+  border: 1px solid rgba(255, 77, 77, 0.3);
+}
+
+.fatal-card h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+
+.fatal-card p {
+  color: var(--text-mid);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.fatal-btn {
+  margin-top: var(--s-2);
+  border: 0;
+  background: var(--grad-primary);
+  color: #05070c;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 20px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: box-shadow var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+.fatal-btn:hover {
+  box-shadow: var(--glow-primary);
+  transform: translateY(-1px);
+}

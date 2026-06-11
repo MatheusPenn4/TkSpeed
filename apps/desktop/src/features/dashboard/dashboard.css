@@ -1,0 +1,127 @@
+.dash { display: flex; flex-direction: column; gap: var(--s-6); max-width: 1280px; margin: 0 auto; }
+
+.dash-head { display: flex; justify-content: space-between; align-items: flex-start; }
+.dash-head h1 { font-family: var(--font-display); font-size: 28px; font-weight: 700; }
+.dash-head p { color: var(--text-mid); margin-top: 4px; font-size: 14px; }
+.dash-actions { display: flex; gap: var(--s-2); }
+
+/* botões */
+.btn {
+  border: 1px solid var(--stroke-strong); background: var(--bg-glass);
+  color: var(--text-hi); padding: 10px 16px; border-radius: var(--r-md);
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all var(--t-fast) var(--ease);
+}
+.btn:hover { border-color: var(--primary); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:disabled:hover { border-color: var(--stroke-strong); box-shadow: none; transform: none; }
+.btn.primary { background: var(--grad-primary); border: 0; color: #05070c; }
+.btn.primary:hover { box-shadow: var(--glow-primary); transform: translateY(-1px); }
+.btn.ghost { background: transparent; }
+.btn.sm { padding: 6px 12px; font-size: 12px; }
+.btn.full { width: 100%; margin-top: var(--s-3); }
+
+/* painéis */
+.panel { padding: var(--s-6); }
+.panel-title {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-low); margin-bottom: var(--s-4);
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr 280px;
+  gap: var(--s-4);
+  align-items: stretch;
+}
+@media (max-width: 1080px) { .dash-grid { grid-template-columns: 1fr; } }
+
+.score-panel { display: flex; flex-direction: column; align-items: center; }
+.score-foot { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: var(--s-4); font-size: 12px; color: var(--text-mid); }
+
+/* lista de gargalos */
+.bn-list { display: flex; flex-direction: column; gap: var(--s-2); }
+.bn { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3); border-radius: var(--r-md); background: var(--bg-glass); }
+.bn p { color: var(--text-mid); font-size: 12px; margin-top: 2px; }
+.bn strong { font-size: 14px; }
+.bn > div { flex: 1; }
+.bn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.bn.high .bn-dot { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+.bn.medium .bn-dot { background: var(--warning); box-shadow: 0 0 10px var(--warning); }
+.bn.low .bn-dot { background: var(--primary); }
+
+/* game boost */
+.boost-panel { display: flex; flex-direction: column; }
+.boost-state { display: flex; align-items: center; gap: var(--s-3); flex: 1; }
+.boost-state strong { font-size: 15px; }
+.boost-state p { color: var(--text-mid); font-size: 12px; margin-top: 2px; }
+.boost-ring {
+  width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 22px; background: var(--bg-glass-strong);
+  border: 1px solid var(--primary); box-shadow: var(--glow-primary);
+  animation: pulse-glow 2.4s var(--ease) infinite;
+}
+
+/* banner de aviso (ex.: telemetria indisponível fora do Tauri) */
+.banner {
+  padding: var(--s-3) var(--s-4);
+  border-left: 3px solid var(--warning);
+  color: var(--text-mid);
+  font-size: 13px;
+}
+.banner.err { border-left-color: var(--danger); }
+
+/* pílula de status geral (Saudável/Atenção/Crítico) */
+.panel-title { display: flex; align-items: center; justify-content: space-between; }
+.status-pill {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
+  padding: 3px 10px; border-radius: var(--r-full); text-transform: none;
+  border: 1px solid var(--stroke-strong);
+}
+.status-pill.ok { color: var(--success); border-color: var(--success); }
+.status-pill.medium { color: var(--warning); border-color: var(--warning); }
+.status-pill.high { color: var(--danger); border-color: var(--danger); }
+.status-pill.low { color: var(--text-low); }
+
+.score-empty {
+  height: 240px; display: grid; place-items: center;
+  font-family: var(--font-display); font-size: 24px; color: var(--text-low);
+}
+
+.empty-state {
+  padding: var(--s-6); text-align: center; color: var(--text-low); font-size: 13px;
+}
+.empty-state.ok { color: var(--success); }
+
+.bn-sol { color: var(--text-low) !important; margin-top: 4px; font-style: italic; }
+
+/* ----- Proteção (snapshots + rollback) ----- */
+.protect { padding: var(--s-6); }
+.protect-grid { display: grid; grid-template-columns: 1fr 280px; gap: var(--s-6); align-items: start; }
+@media (max-width: 1080px) { .protect-grid { grid-template-columns: 1fr; } }
+
+.protect-info { display: flex; flex-direction: column; gap: var(--s-3); }
+.kv { display: flex; flex-direction: column; gap: 2px; }
+.kv > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-low); }
+.kv > strong { font-size: 15px; color: var(--text-hi); }
+.kv > small { font-size: 12px; color: var(--text-mid); }
+.kv.target { font-size: 12px; color: var(--text-low); word-break: break-all; }
+
+.protect-actions { display: flex; flex-direction: column; gap: var(--s-2); }
+.protect-actions .btn { width: 100%; }
+
+.protect-msg { margin-top: var(--s-4); padding: var(--s-3); border-radius: var(--r-md); font-size: 13px; }
+.protect-msg.ok { background: rgba(0, 255, 136, 0.08); color: var(--success); border: 1px solid rgba(0,255,136,0.25); }
+.protect-msg.err { background: rgba(255, 77, 77, 0.08); color: var(--danger); border: 1px solid rgba(255,77,77,0.25); }
+
+.selftest { margin-top: var(--s-4); display: flex; flex-direction: column; gap: var(--s-2); }
+.selftest li { display: flex; gap: var(--s-3); align-items: flex-start; padding: var(--s-3); border-radius: var(--r-md); background: var(--bg-glass); }
+.selftest li .st-icon { font-weight: 700; flex-shrink: 0; }
+.selftest li.ok .st-icon { color: var(--success); }
+.selftest li.err .st-icon { color: var(--danger); }
+.selftest li strong { font-size: 13px; }
+.selftest li p { font-size: 12px; color: var(--text-mid); margin-top: 2px; word-break: break-all; }
+
+/* grid de métricas */
+.metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-4); }
+@media (max-width: 1080px) { .metric-grid { grid-template-columns: repeat(2, 1fr); } }

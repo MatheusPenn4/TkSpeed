@@ -1,0 +1,9 @@
+[package]
+name = "tk-analyzer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tk-contracts = { path = "../tk-contracts" }
+serde_json = { workspace = true }
+tracing = { workspace = true }

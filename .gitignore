@@ -1,0 +1,32 @@
+# Rust
+/target
+**/target
+# Cargo.lock IS committed: TkSpeed is an application, not a library
+# (reproducible builds — required for Alpha release A6).
+
+# Node
+node_modules
+dist
+.pnpm-store
+
+# Tauri
+src-tauri/gen
+src-tauri/target
+
+# Build artifacts / installers (generated, never versioned)
+*.exe
+*.msi
+*.zip
+
+# Local data / runtime
+*.db
+*.db-wal
+*.db-shm
+.env
+.DS_Store
+logs/
+
+# Editors / IDE
+.vscode/
+.idea/
+*.swp

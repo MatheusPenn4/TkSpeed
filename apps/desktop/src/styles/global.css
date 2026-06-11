@@ -1,0 +1,40 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root { height: 100%; }
+
+body {
+  font-family: var(--font-ui);
+  color: var(--text-hi);
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(123, 97, 255, 0.18), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(0, 229, 255, 0.14), transparent 55%),
+    var(--bg-base);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--stroke-strong); border-radius: var(--r-full); }
+::-webkit-scrollbar-track { background: transparent; }
+
+.num { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); }
+
+/* painel de vidro reutilizável */
+.glass {
+  background: var(--bg-glass);
+  border: 1px solid var(--stroke);
+  border-radius: var(--r-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--shadow-md);
+}
+
+.glass-hover { transition: transform var(--t-base) var(--ease), border-color var(--t-base) var(--ease); }
+.glass-hover:hover { transform: translateY(-2px); border-color: var(--stroke-strong); }
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(0, 229, 255, 0); }
+  50% { box-shadow: var(--glow-primary); }
+}

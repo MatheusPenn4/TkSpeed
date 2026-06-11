@@ -1,0 +1,156 @@
+IssueType,Id,ParentId,Phase,Component,Summary,Priority,Effort,StoryPoints,Risk,Dependencies,AcceptanceCriteria
+Epic,TK-E01,,Fase1-MVP,core,Plataforma & Persistencia,P0,,,Medio,,"Fundacao: bootstrap, SQLite, logs, IPC, CI"
+Feature,TK-F011,TK-E01,Fase1-MVP,core,Bootstrap do TkCore & IPC tipado,P0,,,Baixo,,"AppContext + tipos compartilhados"
+Story,TK-S0111,TK-F011,Fase1-MVP,core,Inicializar AppContext e ciclo de vida,P0,M,5,Baixo,,"App inicia, cria DB em APPDATA, expoe contexto; shutdown faz flush; cold start <1.5s"
+Task,TK-T01111,TK-S0111,Fase1-MVP,core,Implementar AppContext::bootstrap,P0,S,2,Baixo,,
+Task,TK-T01112,TK-S0111,Fase1-MVP,core,Lifecycle bootstrap-ready-running-shutdown,P0,S,2,Baixo,,
+Task,TK-T01113,TK-S0111,Fase1-MVP,core,Registrar contexto no setup do Tauri,P0,XS,1,Baixo,,
+Task,TK-T01114,TK-S0111,Fase1-MVP,core,Teste de bootstrap,P1,XS,1,Baixo,,
+Story,TK-S0112,TK-F011,Fase1-MVP,ipc,Contratos + geracao de tipos ts-rs,P0,M,5,Medio,TK-S0111,"Alterar struct Rust regenera .ts; CI quebra se houver drift"
+Task,TK-T01121,TK-S0112,Fase1-MVP,ipc,Definir DTOs em tk-contracts,P0,S,2,Baixo,,
+Task,TK-T01122,TK-S0112,Fase1-MVP,ipc,Build exporta .ts para frontend,P0,S,2,Medio,,
+Task,TK-T01123,TK-S0112,Fase1-MVP,ipc,Wrappers ipc tipados no frontend,P1,XS,1,Baixo,,
+Task,TK-T01124,TK-S0112,Fase1-MVP,ci,Guard de drift de tipos no CI,P1,XS,1,Baixo,,
+Feature,TK-F012,TK-E01,Fase1-MVP,storage,Camada de persistencia SQLite,P0,,,Baixo,,
+Story,TK-S0121,TK-F012,Fase1-MVP,storage,Conexao SQLite + migrations,P0,M,5,Baixo,TK-S0111,"Schema criado conforme doc; reabrir e idempotente; WAL ativo"
+Task,TK-T01211,TK-S0121,Fase1-MVP,storage,Open com WAL/synchronous/foreign_keys,P0,S,2,Baixo,,
+Task,TK-T01212,TK-S0121,Fase1-MVP,storage,Rodar migration 0001 no boot,P0,XS,1,Baixo,,
+Task,TK-T01213,TK-S0121,Fase1-MVP,storage,Teste de migration idempotente,P1,XS,1,Baixo,,
+Story,TK-S0122,TK-F012,Fase1-MVP,storage,Repositorios base (Repository pattern),P1,L,8,Baixo,TK-S0121,"CRUD coberto por testes; rollup s1-s10-m1 funciona"
+Task,TK-T01221,TK-S0122,Fase1-MVP,storage,Traits de repositorios,P1,S,2,Baixo,,
+Task,TK-T01222,TK-S0122,Fase1-MVP,storage,Implementacoes SQLite + erros,P1,M,5,Baixo,,
+Task,TK-T01223,TK-S0122,Fase1-MVP,storage,Housekeeping noturno + VACUUM,P2,M,5,Medio,,
+Feature,TK-F013,TK-E01,Fase1-MVP,core,Sistema de Logs & telemetria de erro,P0,,,Baixo,,
+Story,TK-S0131,TK-F013,Fase1-MVP,core,Logging estruturado com rotacao,P0,M,5,Baixo,TK-S0121,"Logs JSON rotacionados sem PII; audit_log append-only"
+Story,TK-S0132,TK-F013,Fase1-MVP,core,Crash handler opt-in,P2,M,5,Medio,TK-S0131,"Crash gera minidump local; envio so com opt-in"
+Feature,TK-F014,TK-E01,Fase1-MVP,ci,Pipeline CI/CD & health budget,P0,,,Baixo,,
+Story,TK-S0141,TK-F014,Fase1-MVP,ci,CI Windows (build/test/lint/audit),P0,M,5,Baixo,TK-S0111,"PR so funde com pipeline verde; cargo audit/deny rodando"
+Story,TK-S0142,TK-F014,Fase1-MVP,ci,Gate de health budget,P1,M,5,Medio,TK-S0141;TK-S0211,"Build falha se idle >1% CPU ou >150MB RAM"
+Epic,TK-E02,,Fase1-MVP,monitor,Monitoramento em tempo real,P0,,,Medio,,"TkMonitor: coleta assincrona e streaming"
+Feature,TK-F021,TK-E02,Fase1-MVP,monitor,Coletores de telemetria,P0,,,Medio,,
+Story,TK-S0211,TK-F021,Fase1-MVP,monitor,Coletor base + cadencias + backpressure,P0,L,8,Medio,TK-S0111;TK-S0122,"Multiplas fontes coletam em paralelo dentro do budget"
+Task,TK-T02111,TK-S0211,Fase1-MVP,monitor,Trait MetricCollector,P0,S,2,Baixo,,
+Task,TK-T02112,TK-S0211,Fase1-MVP,monitor,Scheduler por fonte,P0,M,5,Medio,,
+Task,TK-T02113,TK-S0211,Fase1-MVP,monitor,Publicar no broadcast com lag policy,P0,S,2,Medio,,
+Task,TK-T02114,TK-S0211,Fase1-MVP,monitor,Downsampler para s1,P1,S,2,Baixo,,
+Story,TK-S0212,TK-F021,Fase1-MVP,monitor,Adapter PDH CPU/RAM/Disco/Rede,P0,L,8,Medio,TK-S0211,"Valores batem +-5% com Gerenciador de Tarefas"
+Story,TK-S0213,TK-F021,Fase1-MVP,monitor,Adapter LibreHardwareMonitor temp/clock/GPU,P1,L,8,Alto,TK-S0211,"Temperaturas/clocks em HW suportado; degrada onde nao ha sensor; licenca auditada"
+Story,TK-S0214,TK-F021,Fase1-MVP,monitor,Stream de metricas para a UI,P0,M,5,Baixo,TK-S0211;TK-S0112,"UI recebe amostras em tempo real sem polling"
+Feature,TK-F022,TK-E02,Fase1-MVP,monitor,Inventario de hardware,P1,,,Medio,,
+Story,TK-S0221,TK-F022,Fase1-MVP,monitor,Deteccao e persistencia de inventario,P1,M,5,Medio,TK-S0122,"Inventario correto na 1a execucao; troca de componente gera evento"
+Epic,TK-E03,,Fase1-MVP,analyzer,Central de Diagnostico,P0,,,Medio,,"TkAnalyzer: gargalos explicaveis"
+Feature,TK-F031,TK-E03,Fase1-MVP,analyzer,Motor de gargalos,P0,,,Medio,,
+Story,TK-S0311,TK-F031,Fase1-MVP,analyzer,BottleneckEngine CPU/RAM/Storage,P0,L,8,Medio,TK-S0211;TK-S0122,"Cenario CPU-bound gera finding High com solucao; somente leitura"
+Task,TK-T03111,TK-S0311,Fase1-MVP,analyzer,Janelas estatisticas sobre telemetria,P0,M,5,Medio,,
+Task,TK-T03112,TK-S0311,Fase1-MVP,analyzer,Regras de gargalo geram Finding,P0,M,5,Medio,,
+Task,TK-T03113,TK-S0311,Fase1-MVP,analyzer,Persistir analysis_runs e findings,P1,S,2,Baixo,,
+Task,TK-T03114,TK-S0311,Fase1-MVP,analyzer,Testes das regras com series sinteticas,P1,S,2,Baixo,,
+Feature,TK-F032,TK-E03,Fase1-MVP,analyzer,Auditor de inicializacao,P1,,,Medio,,
+Story,TK-S0321,TK-F032,Fase1-MVP,analyzer,StartupAnalyzer,P1,M,5,Medio,TK-S0311,"Lista itens de boot com impacto estimado; nenhuma alteracao feita"
+Feature,TK-F033,TK-E03,Fase1-MVP,analyzer,Orquestracao & UI de diagnostico,P0,,,Baixo,,
+Story,TK-S0331,TK-F033,Fase1-MVP,analyzer,Comando analyze_full + progresso,P0,M,5,Baixo,TK-S0311;TK-S0411,"Analise retorna findings + score; UI mostra progresso"
+Epic,TK-E04,,Fase1-MVP,score,TkSpeed Score,P0,,,Medio,,"Modelo 0-1000 explicavel"
+Feature,TK-F041,TK-E04,Fase1-MVP,score,Motor de score,P0,,,Medio,,
+Story,TK-S0411,TK-F041,Fase1-MVP,score,Calculo de subscores e total,P0,L,8,Medio,TK-S0311,"Score reproduzivel; breakdown coerente; versao registrada"
+Task,TK-T04111,TK-S0411,Fase1-MVP,score,Normalizacao por categoria,P0,M,5,Medio,,
+Task,TK-T04112,TK-S0411,Fase1-MVP,score,Aplicar pesos e classificar,P0,S,2,Baixo,,
+Task,TK-T04113,TK-S0411,Fase1-MVP,score,Persistir scores,P1,XS,1,Baixo,,
+Task,TK-T04114,TK-S0411,Fase1-MVP,score,Testes de faixas/classificacao,P1,S,2,Baixo,,
+Story,TK-S0412,TK-F041,Fase1-MVP,score,Transparencia do score (drill-down),P1,M,5,Baixo,TK-S0411;TK-S0331,"Clicar numa categoria mostra o que puxou o score"
+Epic,TK-E05,,Fase1-MVP,benchmark,Benchmark,P1,,,Medio,,"Suites deterministicas + antes/depois"
+Feature,TK-F051,TK-E05,Fase1-MVP,benchmark,Suites de benchmark,P1,,,Medio,,
+Story,TK-S0511,TK-F051,Fase1-MVP,benchmark,Suites CPU/RAM/SSD,P1,L,8,Medio,TK-S0122,"Resultados estaveis (variancia <5% na mesma maquina)"
+Story,TK-S0512,TK-F051,Fase1-MVP,benchmark,Comparacao antes/depois,P1,M,5,Baixo,TK-S0511,"Delta correto; bloqueia comparar versoes diferentes"
+Epic,TK-E06,,Fase1-MVP,rollback,Rollback,P0,,,Alto,,"Pilar de confianca; bloqueia mutacoes"
+Feature,TK-F061,TK-E06,Fase1-MVP,rollback,Snapshots & restauracao,P0,,,Alto,,
+Story,TK-S0611,TK-F061,Fase1-MVP,rollback,SnapshotStore + integridade,P0,L,8,Alto,TK-S0122,"Snapshot capturado e restaurado fielmente; hash invalido bloqueia restore"
+Task,TK-T06111,TK-S0611,Fase1-MVP,rollback,Implementar SnapshotSink sobre SQLite,P0,M,5,Alto,,
+Task,TK-T06112,TK-S0611,Fase1-MVP,rollback,Hash de integridade e status,P0,S,2,Medio,,
+Task,TK-T06113,TK-S0611,Fase1-MVP,rollback,Restauracao total e granular,P0,M,5,Alto,,
+Task,TK-T06114,TK-S0611,Fase1-MVP,rollback,Retencao e expiracao,P1,S,2,Baixo,,
+Story,TK-S0612,TK-F061,Fase1-MVP,rollback,Quarentena de arquivos,P1,M,5,Medio,TK-S0611,"Arquivo removido e recuperavel ate o TTL"
+Feature,TK-F062,TK-E06,Fase1-MVP,rollback,Saga transacional,P0,,,Alto,,
+Story,TK-S0621,TK-F062,Fase1-MVP,rollback,Orquestrador de saga commit/compensate,P0,L,8,Alto,TK-S0611,"Falha no meio reverte tudo; nunca estado parcial; recusa sem snapshot"
+Task,TK-T06211,TK-S0621,Fase1-MVP,rollback,Implementar run_plan ligando sinks reais,P0,M,5,Alto,,
+Task,TK-T06212,TK-S0621,Fase1-MVP,rollback,Compensacao em ordem inversa idempotente,P0,M,5,Alto,,
+Task,TK-T06213,TK-S0621,Fase1-MVP,rollback,Recusar aplicacao se snapshot falhar,P0,XS,1,Alto,,
+Task,TK-T06214,TK-S0621,Fase1-MVP,rollback,Testes de falha forcada em VM,P0,M,5,Alto,,
+Feature,TK-F063,TK-E06,Fase1-MVP,rollback,UI de Rollback,P1,,,Baixo,,
+Story,TK-S0631,TK-F063,Fase1-MVP,ui,Tela Rollback (timeline + diff + restaurar),P1,M,5,Baixo,TK-S0611;TK-S0711,"Usuario ve o que muda antes de restaurar; reverte total ou granular"
+Epic,TK-E07,,Fase1-MVP,ui,Dashboard & Design System,P0,,,Baixo,,"Shell premium + telas do MVP"
+Feature,TK-F071,TK-E07,Fase1-MVP,design-system,Design System & AppShell,P0,,,Baixo,,
+Story,TK-S0711,TK-F071,Fase1-MVP,design-system,Componentizar Design System (packages/ui),P0,L,8,Baixo,TK-S0111,"Componentes reutilizaveis documentados; acessibilidade AA"
+Story,TK-S0712,TK-F071,Fase1-MVP,ui,Janela custom Tauri (titlebar/controles),P1,S,2,Baixo,TK-S0711,"Controles de janela funcionam"
+Feature,TK-F072,TK-E07,Fase1-MVP,ui,Telas do MVP,P0,,,Baixo,,
+Story,TK-S0721,TK-F072,Fase1-MVP,ui,Dashboard com dados reais,P0,M,5,Baixo,TK-S0214;TK-S0331;TK-S0411,"Dashboard reflete dados reais em <1.5s; sem mock"
+Story,TK-S0722,TK-F072,Fase1-MVP,ui,Tela Monitoramento (graficos tempo real),P1,L,8,Baixo,TK-S0214;TK-S0711,"Graficos fluidos 60fps; export CSV"
+Story,TK-S0723,TK-F072,Fase1-MVP,ui,Tela Central de Diagnostico,P0,M,5,Baixo,TK-S0331;TK-S0412,"Findings legiveis e filtraveis ligados ao score"
+Story,TK-S0724,TK-F072,Fase1-MVP,ui,Tela Benchmark,P2,M,5,Baixo,TK-S0512;TK-S0711,"Roda benchmark e mostra antes/depois"
+Epic,TK-E08,,Fase2-Alpha,optimizer,Motor de Otimizacao,P0,,,Alto,,"Tweaks reais sobre a saga"
+Feature,TK-F081,TK-E08,Fase2-Alpha,optimizer,Catalogo de otimizacoes seguras,P0,,,Alto,,
+Story,TK-S0811,TK-F081,Fase2-Alpha,optimizer,Plataforma de tweaks (registry/servicos/power),P0,L,8,Alto,TK-S0621;TK-S0611,"Toda mutacao captura estado anterior; itens criticos bloqueados"
+Story,TK-S0812,TK-F081,Fase2-Alpha,optimizer,Catalogo inicial ~10 tweaks safe,P1,L,8,Alto,TK-S0811,"Cada tweak previsualiza/aplica/verifica/reverte; nada sem snapshot"
+Story,TK-S0813,TK-F081,Fase2-Alpha,optimizer,SafetyGuard & confirmacao por risco,P0,M,5,Alto,TK-S0812,"Tweak avancado exige confirmacao; kill switch remoto"
+Feature,TK-F082,TK-E08,Fase2-Alpha,optimizer,Otimizacao guiada + medicao,P1,,,Medio,,
+Story,TK-S0821,TK-F082,Fase2-Alpha,optimizer,Fluxo otimizar-medir (benchmark integrado),P1,M,5,Medio,TK-S0812;TK-S0512;TK-S0331,"Usuario aplica plano e ve ganho real medido"
+Story,TK-S0822,TK-F082,Fase2-Alpha,optimizer,Otimizacao de rede TCP/DNS opt-in,P2,M,5,Alto,TK-S0811,"Parametros aplicados e revertidos sem perda de conectividade"
+Epic,TK-E09,,Fase2-Alpha,gameboost,Game Boost,P1,,,Alto,,
+Feature,TK-F091,TK-E09,Fase2-Alpha,gameboost,Deteccao de jogo,P1,,,Medio,,
+Story,TK-S0911,TK-F091,Fase2-Alpha,gameboost,GameDetector foreground/assinaturas,P1,L,8,Medio,TK-S0211,"Detecta inicio/fim de jogo com baixo falso positivo"
+Feature,TK-F092,TK-E09,Fase2-Alpha,gameboost,Aplicacao e perfis,P1,,,Alto,,
+Story,TK-S0921,TK-F092,Fase2-Alpha,gameboost,Aplicar boost reversivel,P1,L,8,Alto,TK-S0911;TK-S0811,"Ao fechar jogo 100% restaurado mesmo apos crash (watchdog)"
+Story,TK-S0922,TK-F092,Fase2-Alpha,gameboost,Perfis por jogo (CRUD),P2,M,5,Baixo,TK-S0921,"Usuario cria/edita perfil por jogo; persiste"
+Epic,TK-E10,,Fase2-Alpha,report,Relatorios,P1,,,Baixo,,
+Feature,TK-F101,TK-E10,Fase2-Alpha,report,Geracao de relatorios,P1,,,Baixo,,
+Story,TK-S1011,TK-F101,Fase2-Alpha,report,Render HTML (resumo/score/gargalos/antes-depois),P1,M,5,Baixo,TK-S0331;TK-S0512,"Relatorio HTML completo gerado de um run"
+Story,TK-S1012,TK-F101,Fase2-Alpha,report,Exportar PDF,P2,M,5,Medio,TK-S1011,"PDF fiel ao HTML, paginado"
+Epic,TK-E11,,Fase2-Alpha,history,Historico (base Digital Twin),P1,,,Baixo,,
+Feature,TK-F111,TK-E11,Fase2-Alpha,history,Serie temporal & visualizacao,P1,,,Baixo,,
+Story,TK-S1111,TK-F111,Fase2-Alpha,history,Persistencia historica + rollups (m1 1 ano),P1,M,5,Baixo,TK-S0122,"Historico consultavel por periodo; DB controlado"
+Story,TK-S1112,TK-F111,Fase2-Alpha,history,Tela Historico (timeline + marcos),P2,M,5,Baixo,TK-S1111;TK-S0711,"Usuario ve evolucao do score com eventos sobrepostos"
+Epic,TK-E12,,Fase3-Beta,optimizer,Perfis de desempenho,P1,,,Medio,,
+Feature,TK-F121,TK-E12,Fase3-Beta,optimizer,Perfis de otimizacao,P1,,,Medio,,
+Story,TK-S1211,TK-F121,Fase3-Beta,optimizer,Perfis built-in + custom,P1,M,5,Medio,TK-S0812,"Aplicar perfil executa conjunto de tweaks com snapshot reversivel"
+Story,TK-S1212,TK-F121,Fase3-Beta,optimizer,Agendamento de perfis/manutencao,P3,M,5,Medio,TK-S1211,"Tarefa agendada roda e registra em auditoria"
+Epic,TK-E13,,Fase3-Beta,licensing,Licenciamento,P0,,,Alto,,"Offline-first; 4 planos"
+Feature,TK-F131,TK-E13,Fase3-Beta,licensing,Validacao de licenca,P0,,,Alto,,
+Story,TK-S1311,TK-F131,Fase3-Beta,licensing,Token assinado Ed25519 + validacao local,P0,L,8,Alto,TK-S0121,"Licenca valida desbloqueia offline; token forjado rejeitado"
+Story,TK-S1312,TK-F131,Fase3-Beta,licensing,Ativacao + device binding + grace period,P0,L,8,Alto,TK-S1311,"Ativa e vincula device; respeita limite; degrada para Free apos grace"
+Story,TK-S1313,TK-F131,Fase3-Beta,licensing,Backend de licenciamento + faturamento,P1,XL,13,Alto,TK-S1311,"Compra emite token; cancelamento revoga; renovacao automatica online"
+Feature,TK-F132,TK-E13,Fase3-Beta,licensing,Gating de UI por plano,P1,,,Baixo,,
+Story,TK-S1321,TK-F132,Fase3-Beta,licensing,Feature flags por tier + telas de upgrade,P1,M,5,Baixo,TK-S1311,"Recurso Pro bloqueado no Free com CTA; trial 14 dias"
+Epic,TK-E14,,Fase3-Beta,updater,Atualizador,P0,,,Alto,,
+Feature,TK-F141,TK-E14,Fase3-Beta,updater,Auto-update assinado,P0,,,Alto,,
+Story,TK-S1411,TK-F141,Fase3-Beta,updater,Tauri Updater + assinatura,P0,M,5,Alto,TK-S0141,"Update so instala com assinatura valida; falha nao corrompe"
+Story,TK-S1412,TK-F141,Fase3-Beta,updater,Instalador MSI/NSIS + bootstrap WebView2,P1,M,5,Medio,TK-S1411,"Instala limpo em Win10 22H2+/Win11; binario assinado"
+Epic,TK-E15,,Fase4-v1,plugins,SDK de Plugins & Sandbox,P1,,,Alto,,
+Feature,TK-F151,TK-E15,Fase4-v1,plugins,Runtime de plugins (WASM),P1,,,Alto,,
+Story,TK-S1511,TK-F151,Fase4-v1,plugins,Host API + sandbox WASM + capabilities,P1,XL,13,Alto,TK-S0621;TK-S0811,"Plugin roda isolado; mutacao so via saga; capability negada bloqueia"
+Story,TK-S1512,TK-F151,Fase4-v1,plugins,Manifesto + assinatura + carregamento dinamico,P1,L,8,Alto,TK-S1511,"Plugin assinado carrega; nao-assinado/revogado bloqueado"
+Feature,TK-F152,TK-E15,Fase4-v1,plugins,SDK & ferramentas para terceiros,P2,,,Medio,,
+Story,TK-S1521,TK-F152,Fase4-v1,plugins,SDK + CLI + simulador,P2,L,8,Medio,TK-S1512,"Dev externo cria/testa/assina plugin hello seguindo a doc"
+Epic,TK-E16,,Fase4-v1,plugins,Marketplace,P2,,,Medio,,
+Feature,TK-F161,TK-E16,Fase4-v1,plugins,Distribuicao de plugins,P2,,,Medio,,
+Story,TK-S1611,TK-F161,Fase4-v1,plugins,Catalogo + instalacao in-app,P2,L,8,Medio,TK-S1512,"Usuario descobre/instala/atualiza plugin pela UI"
+Story,TK-S1612,TK-F161,Fase4-v1,plugins,Revenue share + publisher portal,P3,L,8,Medio,TK-S1611;TK-S1313,"Publisher publica pago e recebe split"
+Epic,TK-E17,,Fase4-v1,history,Digital Twin (completo),P1,,,Medio,,
+Feature,TK-F171,TK-E17,Fase4-v1,history,Baseline & regressoes,P1,,,Medio,,
+Story,TK-S1711,TK-F171,Fase4-v1,history,Baseline movel + deteccao de anomalia,P1,L,8,Medio,TK-S1111,"Desvio significativo gera insight; baseline atualiza por janela"
+Story,TK-S1712,TK-F171,Fase4-v1,history,Correlacao evento-metrica (regressao),P1,L,8,Medio,TK-S1711;TK-S0221,"Update de driver seguido de queda gera insight com evidencia"
+Story,TK-S1713,TK-F171,Fase4-v1,ui,Cards de insight na tela Historico,P2,M,5,Baixo,TK-S1712;TK-S1112,"Insights exibidos com evidencia e acao reversivel"
+Epic,TK-E18,,Fase5-v2,ai,TkAI,P1,,,Alto,,
+Feature,TK-F181,TK-E18,Fase5-v2,ai,Inteligencia local (L1+L2),P1,,,Alto,,
+Story,TK-S1811,TK-F181,Fase5-v2,ai,L1 motor de explicacao por regras,P1,L,8,Medio,TK-S1712,"Responde por que FPS caiu com correlacao real e evidencia; custo ~0"
+Story,TK-S1812,TK-F181,Fase5-v2,ai,L2 SLM local Q&A offline,P2,XL,13,Alto,TK-S1811,"Responde perguntas comuns offline; modelo <2GB; sem envio"
+Feature,TK-F182,TK-E18,Fase5-v2,ai,Camada cloud opt-in (L3),P2,,,Alto,,
+Story,TK-S1821,TK-F182,Fase5-v2,ai,L3 LLM cloud opt-in com cota,P2,L,8,Alto,TK-S1812;TK-S1311,"So envia com opt-in; respeita cota; sem PII; transparente"
+Story,TK-S1822,TK-F182,Fase5-v2,ai,Suporte tecnico automatizado + escalonamento,P3,M,5,Medio,TK-S1821,"Reduz tickets 1o nivel; escalonamento leva contexto"
+Epic,TK-E19,,Fase5-v2,cloud,Cloud opcional (sync),P2,,,Alto,,
+Feature,TK-F191,TK-E19,Fase5-v2,cloud,Sincronizacao opt-in,P2,,,Alto,,
+Story,TK-S1911,TK-F191,Fase5-v2,cloud,Backend de sync stateless + auth,P2,XL,13,Alto,TK-S1312;TK-S1111,"Perfis/Twin sincronizam com opt-in; offline 100% funcional; cripto em transito/repouso"
+Story,TK-S1912,TK-F191,Fase5-v2,cloud,Multi-dispositivo (limites por plano),P3,M,5,Medio,TK-S1911,"Respeita limite por tier; conflitos resolvidos sem perda"
+Epic,TK-E20,,Fase5-v2,enterprise,Enterprise (fleet),P2,,,Alto,,
+Feature,TK-F201,TK-E20,Fase5-v2,enterprise,Console central & deploy,P2,,,Alto,,
+Story,TK-S2011,TK-F201,Fase5-v2,enterprise,Console multi-tenant (frota),P2,XL,13,Alto,TK-S1911;TK-S1211,"Admin ve frota, aplica politica e audita; telemetria agregada anonima"
+Story,TK-S2012,TK-F201,Fase5-v2,enterprise,Deploy silencioso (GPO/MDM/MSI) + SSO,P2,L,8,Medio,TK-S2011;TK-S1412;TK-S1313,"TI implanta em massa sem interacao; SSO; seats controlados"
+Story,TK-S2013,TK-F201,Fase5-v2,enterprise,Relatorios agregados white-label,P3,M,5,Baixo,TK-S2011;TK-S1012,"Admin exporta relatorio agregado branded"

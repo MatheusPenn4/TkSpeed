@@ -1,0 +1,59 @@
+/* TkSpeed · Design System "Aurora" — tokens (ver docs/06-DESIGN-SYSTEM.md) */
+:root {
+  /* superfícies */
+  --bg-base: #080b12;
+  --bg-elevated: #0e131d;
+  --bg-glass: rgba(255, 255, 255, 0.04);
+  --bg-glass-strong: rgba(255, 255, 255, 0.07);
+  --stroke: rgba(255, 255, 255, 0.08);
+  --stroke-strong: rgba(255, 255, 255, 0.14);
+
+  /* marca */
+  --primary: #00e5ff;
+  --secondary: #7b61ff;
+  --success: #00ff88;
+  --danger: #ff4d4d;
+  --warning: #ffc857;
+
+  /* texto */
+  --text-hi: #eaf2ff;
+  --text-mid: #9aa7bd;
+  --text-low: #5b6678;
+
+  /* gradientes / glow */
+  --grad-primary: linear-gradient(135deg, #00e5ff 0%, #7b61ff 100%);
+  --grad-health: linear-gradient(135deg, #00ff88 0%, #00e5ff 100%);
+  --grad-risk: linear-gradient(135deg, #ffc857 0%, #ff4d4d 100%);
+  --glow-primary: 0 0 24px rgba(0, 229, 255, 0.35);
+  --glow-success: 0 0 24px rgba(0, 255, 136, 0.3);
+
+  /* raio */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-full: 999px;
+
+  /* espaçamento (grid 4px) */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-6: 24px; --s-8: 32px; --s-12: 48px; --s-16: 64px;
+
+  /* tipografia */
+  --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", monospace;
+
+  /* motion */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-fast: 120ms;
+  --t-base: 200ms;
+  --t-slow: 400ms;
+
+  /* elevação */
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

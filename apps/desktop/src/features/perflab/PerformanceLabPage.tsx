@@ -1,0 +1,319 @@
+import { useEffect, useState } from "react";
+import {
+  usePerfLab,
+  type BenchmarkSessionInfo,
+  type BottleneckReport,
+  type HardwareSnapshot,
+  type NoiseProfile,
+  type PerfComparison,
+  type PerfVerdict,
+} from "@/shared/hooks/usePerfLab";
+import "./perflab.css";
+
+const METRIC_LABEL: Record<string, string> = {
+  cpu_single: "CPU · 1 thread",
+  cpu_multi: "CPU · multi-thread",
+  cpu_load_pct: "Carga de CPU no teste",
+  ram_bandwidth_gbs: "RAM · largura de banda",
+  ram_latency_ns: "RAM · latência",
+  io_seq_write_mbs: "Disco · escrita seq.",
+  io_seq_read_mbs: "Disco · leitura seq.",
+  io_rand_read_iops: "Disco · IOPS aleatório",
+  io_latency_us: "Disco · latência",
+  fps_avg: "FPS médio",
+  fps_min: "FPS mínimo",
+  fps_max: "FPS máximo",
+  fps_1pct_low: "1% Low",
+  fps_01pct_low: "0.1% Low",
+  frametime_avg: "Frame time médio",
+  frametime_p95: "Frame time P95",
+  frametime_p99: "Frame time P99",
+};
+
+const KINDS: { id: string; label: string }[] = [
+  { id: "cpu", label: "CPU" },
+  { id: "ram", label: "RAM" },
+  { id: "io", label: "Storage" },
+  { id: "complete", label: "Completo" },
+];
+
+const VERDICT: Record<PerfVerdict, { label: string; cls: string }> = {
+  Gain: { label: "▲ Ganho", cls: "ok" },
+  Loss: { label: "▼ Perda", cls: "err" },
+  NoChange: { label: "◦ Sem alteração", cls: "neutral" },
+  Unstable: { label: "≈ Instável", cls: "warn" },
+};
+
+const BOUND_LABEL: Record<string, string> = {
+  Cpu: "CPU Bound", Gpu: "GPU Bound", Ram: "RAM Bound", Storage: "Storage Bound",
+  Thermal: "Thermal Bound", Balanced: "Balanceado", Inconclusive: "Inconclusivo",
+};
+
+const fmt = (v: number | null | undefined, d = 0) => (v === null || v === undefined ? "—" : v.toFixed(d));
+function fmtTime(ts: number) {
+  try { return new Date(ts).toLocaleString(); } catch { return "—"; }
+}
+function sessionLabel(s: BenchmarkSessionInfo) {
+  return `#${s.id} · ${s.label || s.kind} · ${fmtTime(s.ts)}`;
+}
+
+export function PerformanceLabPage() {
+  const { available, sessions, running, error, runBenchmark, captureFps, captureFpsDemo, compare, snapshot, detect, noiseFloor } =
+    usePerfLab();
+  const [label, setLabel] = useState("Baseline");
+  const [gameTarget, setGameTarget] = useState("");
+  const [fpsDuration, setFpsDuration] = useState(30);
+  const [last, setLast] = useState<BenchmarkSessionInfo | null>(null);
+  const [beforeId, setBeforeId] = useState<number | null>(null);
+  const [afterId, setAfterId] = useState<number | null>(null);
+  const [comparison, setComparison] = useState<PerfComparison | null>(null);
+  const [noise, setNoise] = useState<NoiseProfile | null>(null);
+  const [hw, setHw] = useState<HardwareSnapshot | null>(null);
+  const [bottleneck, setBottleneck] = useState<BottleneckReport | null>(null);
+  const [detecting, setDetecting] = useState(false);
+
+  useEffect(() => {
+    if (sessions.length >= 1 && afterId === null) setAfterId(sessions[0].id);
+    if (sessions.length >= 2 && beforeId === null) setBeforeId(sessions[1].id);
+  }, [sessions, beforeId, afterId]);
+
+  // Snapshot de hardware ao montar + a cada 3s.
+  useEffect(() => {
+    if (!available) return;
+    let alive = true;
+    const tick = async () => { const s = await snapshot(); if (alive && s) setHw(s); };
+    tick();
+    const id = setInterval(tick, 3000);
+    return () => { alive = false; clearInterval(id); };
+  }, [available, snapshot]);
+
+  async function onRun(kind: string) {
+    const s = await runBenchmark(kind, label || "Sessão");
+    if (s) { setLast(s); setComparison(null); }
+  }
+  async function onCaptureFps() {
+    const s = await captureFps(gameTarget.trim(), fpsDuration);
+    if (s) { setLast(s); setComparison(null); }
+  }
+  async function onCaptureDemo() {
+    const s = await captureFpsDemo();
+    if (s) { setLast(s); setComparison(null); }
+  }
+  async function onCompare() {
+    if (beforeId === null || afterId === null) return;
+    const c = await compare(beforeId, afterId);
+    if (c) setComparison(c);
+  }
+  async function onNoise() {
+    const suite = sessions.find((s) => s.id === beforeId)?.suite_version;
+    if (!suite) return;
+    const n = await noiseFloor(suite);
+    if (n) setNoise(n);
+  }
+  async function onDetect() {
+    setDetecting(true);
+    const r = await detect();
+    if (r) setBottleneck(r);
+    setDetecting(false);
+  }
+
+  return (
+    <div className="perflab">
+      <header className="dash-head">
+        <div>
+          <h1>Performance Lab</h1>
+          <p>Visão completa da máquina: CPU · GPU · RAM · Storage · Temperaturas. (Sem FPS/otimização ainda)</p>
+        </div>
+      </header>
+
+      {!available && (
+        <div className="glass banner">⚠ Use <span className="mono">npm run tauri dev</span> para dados reais.</div>
+      )}
+      {error && <div className="glass banner err">Erro: {error}</div>}
+
+      {/* Hardware ao vivo */}
+      <section className="glass panel">
+        <div className="panel-title">Hardware ao vivo</div>
+        <div className="hw-grid">
+          <div className="hw-card glass">
+            <span className="hw-k">GPU</span>
+            {hw?.gpu ? (
+              <>
+                <strong className="hw-name">{hw.gpu.name}</strong>
+                <span className="num hw-v">{fmt(hw.gpu.usage_pct)}<small> %</small></span>
+                <span className="hw-sub">
+                  VRAM {fmt(hw.gpu.vram_used_mb / 1024, 1)}/{fmt(hw.gpu.vram_total_mb / 1024, 1)} GB
+                  {hw.gpu.clock_mhz != null && ` · ${fmt(hw.gpu.clock_mhz)} MHz`}
+                  {hw.gpu.temp_c != null && ` · ${fmt(hw.gpu.temp_c)}°C`}
+                </span>
+              </>
+            ) : (
+              <span className="hw-na">Indisponível (sem GPU NVIDIA / NVML)</span>
+            )}
+          </div>
+          <div className="hw-card glass">
+            <span className="hw-k">Memória</span>
+            <span className="num hw-v">{fmt(hw?.ram_usage_pct)}<small> %</small></span>
+            <span className="hw-sub">{hw ? `${fmt(hw.ram_used_gb, 1)} / ${fmt(hw.ram_total_gb, 0)} GB` : "—"}</span>
+          </div>
+          <div className="hw-card glass">
+            <span className="hw-k">Temperaturas</span>
+            <span className="hw-sub">CPU: {hw?.cpu_temp_c != null ? `${fmt(hw.cpu_temp_c)}°C` : "indisponível"}</span>
+            <span className="hw-sub">GPU: {hw?.gpu?.temp_c != null ? `${fmt(hw.gpu.temp_c)}°C` : "indisponível"}</span>
+            <span className="hw-sub hw-note">Hotspot/SSD: via LibreHardwareMonitor (futuro)</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Detector de gargalo */}
+      <section className="glass panel">
+        <div className="panel-title">
+          Detector de gargalo
+          <button className="btn ghost sm" onClick={onDetect} disabled={detecting || !available}>
+            {detecting ? "Amostrando 2s…" : "Detectar agora"}
+          </button>
+        </div>
+        {bottleneck ? (
+          <div className="bn-result">
+            <span className={`bound bound-${bottleneck.primary.toLowerCase()}`}>{BOUND_LABEL[bottleneck.primary]}</span>
+            <p>{bottleneck.detail}</p>
+            <span className="hw-sub">
+              CPU {fmt(bottleneck.cpu_avg)}% · GPU {bottleneck.gpu_avg != null ? `${fmt(bottleneck.gpu_avg)}%` : "n/d"} · RAM {fmt(bottleneck.ram_avg)}%
+            </span>
+          </div>
+        ) : (
+          <div className="empty-state">Clique em “Detectar agora” (ideal sob carga real, ex.: jogo).</div>
+        )}
+      </section>
+
+      {/* Executar benchmark */}
+      <section className="glass panel">
+        <div className="panel-title">Executar Benchmark</div>
+        <div className="run-row">
+          <input className="pl-input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Rótulo" disabled={running} />
+          {KINDS.map((k) => (
+            <button key={k.id} className="btn primary" onClick={() => onRun(k.id)} disabled={running || !available}>
+              {k.label}
+            </button>
+          ))}
+        </div>
+        {running && <div className="hw-sub" style={{ marginTop: 12 }}>Executando benchmark… (alguns segundos)</div>}
+        {last && (
+          <>
+            <div className="quality-line">
+              Confiança da medição:{" "}
+              <strong className={last.stable ? "q-ok" : "q-warn"}>{last.confidence}%</strong>
+              {last.contaminated && <span className="q-warn"> · ⚠ contaminada (térmica)</span>}
+              {!last.stable && !last.contaminated && <span className="q-warn"> · variância alta</span>}
+            </div>
+            <div className="result-grid">
+              {last.metrics.map((m) => (
+                <div key={m.metric} className="result-card glass">
+                  <span className="rc-label">{METRIC_LABEL[m.metric] ?? m.metric}</span>
+                  <span className="num rc-value">{m.value.toFixed(m.unit === "GB/s" || m.unit === "ns" ? 1 : 0)}<small> {m.unit}</small></span>
+                  <span className="rc-sd">± {m.stddev.toFixed(1)} · {m.samples} runs</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* Captura de FPS (jogo) */}
+      <section className="glass panel">
+        <div className="panel-title">Captura de Jogo · FPS &amp; Frame Time</div>
+        <div className="run-row">
+          <input
+            className="pl-input"
+            value={gameTarget}
+            onChange={(e) => setGameTarget(e.target.value)}
+            placeholder="Processo do jogo (ex.: game.exe)"
+            disabled={running}
+          />
+          <input
+            className="pl-input pl-num"
+            type="number"
+            min={5}
+            max={300}
+            value={fpsDuration}
+            onChange={(e) => setFpsDuration(Number(e.target.value))}
+            disabled={running}
+            title="Duração (segundos)"
+          />
+          <button className="btn primary" onClick={onCaptureFps} disabled={running || !available || !gameTarget.trim()}>
+            Capturar FPS
+          </button>
+          <button className="btn ghost" onClick={onCaptureDemo} disabled={running || !available}>
+            Demonstrar pipeline (sintético)
+          </button>
+        </div>
+        <div className="hw-sub" style={{ marginTop: 10 }}>
+          Captura real via <span className="mono">PresentMon</span> (coloque o <span className="mono">PresentMon-x64.exe</span> em
+          <span className="mono"> %APPDATA%\TkSpeed\tools</span> e rode o app como administrador). O botão sintético valida 1%/0.1% low + confiança sem PresentMon.
+        </div>
+      </section>
+
+      {/* Comparar */}
+      <section className="glass panel">
+        <div className="panel-title">Comparar sessões (antes vs depois)</div>
+        {sessions.length < 2 ? (
+          <div className="empty-state">Execute ao menos 2 benchmarks (mesmo tipo) para comparar.</div>
+        ) : (
+          <>
+            <div className="cmp-row">
+              <label>Antes
+                <select value={beforeId ?? ""} onChange={(e) => setBeforeId(Number(e.target.value))}>
+                  {sessions.map((s) => <option key={s.id} value={s.id}>{sessionLabel(s)}</option>)}
+                </select>
+              </label>
+              <span className="cmp-vs">vs</span>
+              <label>Depois
+                <select value={afterId ?? ""} onChange={(e) => setAfterId(Number(e.target.value))}>
+                  {sessions.map((s) => <option key={s.id} value={s.id}>{sessionLabel(s)}</option>)}
+                </select>
+              </label>
+              <button className="btn" onClick={onCompare} disabled={beforeId === afterId}>Comparar</button>
+              <button className="btn ghost" onClick={onNoise}>Ruído da máquina</button>
+            </div>
+
+            {noise && (
+              <div className="noise-box">
+                <strong>Noise floor ({noise.source === "learned" ? `aprendido · ${noise.sessions} sessões` : "default conservador"}):</strong>
+                <div className="noise-entries">
+                  {noise.entries.map((e) => (
+                    <span key={e.metric} className="noise-pill">{(METRIC_LABEL[e.metric] ?? e.metric)}: ±{e.cv_pct.toFixed(1)}%</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {comparison && (
+              <>
+                <div className={`cmp-conf ${comparison.reliable ? "ok" : "warn"}`}>
+                  Confiança da comparação: <strong>{comparison.confidence}%</strong> ·{" "}
+                  {comparison.reliable ? "confiável" : "medição instável — vereditos suprimidos"}
+                </div>
+                <table className="cmp-table">
+                  <thead><tr><th>Métrica</th><th>Antes</th><th>Depois</th><th>Δ</th><th>Margem</th><th>Veredito</th></tr></thead>
+                  <tbody>
+                    {comparison.rows.map((r) => (
+                      <tr key={r.metric}>
+                        <td>{METRIC_LABEL[r.metric] ?? r.metric}</td>
+                        <td className="num">{r.before.toFixed(1)}</td>
+                        <td className="num">{r.after.toFixed(1)}</td>
+                        <td className="num">{r.delta_pct >= 0 ? "+" : ""}{r.delta_pct.toFixed(2)}%</td>
+                        <td className="num">±{r.margin_pct.toFixed(2)}%</td>
+                        <td><span className={`verdict ${VERDICT[r.verdict].cls}`}>{VERDICT[r.verdict].label}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="cmp-summary">{comparison.summary}</div>
+              </>
+            )}
+          </>
+        )}
+      </section>
+    </div>
+  );
+}

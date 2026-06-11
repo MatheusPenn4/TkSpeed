@@ -1,0 +1,57 @@
+==================================================
+ TkSpeed — Alpha 0.1.0
+ Plataforma de performance para Windows
+==================================================
+
+OBRIGADO POR TESTAR! Esta é uma versão ALPHA (em desenvolvimento).
+
+--------------------------------------------------
+REQUISITOS
+--------------------------------------------------
+- Windows 10 (22H2+) ou Windows 11, 64-bit.
+- WebView2 Runtime (já vem no Windows 11; no Windows 10 o instalador instala se faltar).
+
+--------------------------------------------------
+COMO INSTALAR
+--------------------------------------------------
+1. Execute "TkSpeed_0.1.0_x64-setup.exe".
+
+2. O Windows pode mostrar uma tela azul "O Windows protegeu seu PC" (SmartScreen).
+   Isso é normal: o app ainda NÃO é assinado digitalmente (faremos isso no Beta).
+   Clique em "Mais informações" e depois em "Executar assim mesmo".
+
+3. Aceite o controle de conta de usuário (UAC) para concluir a instalação.
+
+4. Abra o TkSpeed pelo atalho criado.
+
+--------------------------------------------------
+O QUE TESTAR
+--------------------------------------------------
+- Dashboard: veja CPU/RAM/Disco em tempo real e o hardware detectado.
+- "Analisar Agora": gera o TkSpeed Score e a lista de gargalos.
+- Performance Lab: rode os benchmarks (CPU/RAM/Storage) e compare sessões.
+- Otimizações (Centro de Otimizações):
+    * Plano de Alto Desempenho — mede antes/depois e decide manter ou reverter.
+    * Limpezas (temporários/logs) — liberam espaço e são REVERSÍVEIS (quarentena).
+    * Game Mode / Game DVR — aplicados e reversíveis (comprove FPS no seu jogo).
+- Tudo é REVERSÍVEL: use "Reverter" no histórico se quiser desfazer.
+
+IMPORTANTE: o TkSpeed nunca afirma um ganho sem medir. Se a evidência não
+comprovar melhora, ele reverte automaticamente. Isso é proposital.
+
+--------------------------------------------------
+SE ALGO DER ERRADO (SUPORTE)
+--------------------------------------------------
+1. Feche o TkSpeed.
+2. Clique direito em "Export-TkSpeedDiagnostic.ps1" > "Executar com PowerShell".
+3. Será gerado "TkSpeed-Diagnostic.zip" na sua Área de Trabalho.
+4. Envie esse .zip + o arquivo FEEDBACK.md preenchido para o time TkSpeed.
+   (O diagnóstico contém logs e dados de hardware/medição — nenhum dado pessoal.)
+
+--------------------------------------------------
+DESINSTALAR
+--------------------------------------------------
+Configurações do Windows > Aplicativos > TkSpeed > Desinstalar.
+Dados ficam em %APPDATA%\TkSpeed (pode apagar a pasta manualmente após desinstalar).
+
+Obrigado! Seu feedback molda o produto. 🚀

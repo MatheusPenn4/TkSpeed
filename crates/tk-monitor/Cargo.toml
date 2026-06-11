@@ -1,0 +1,9 @@
+[package]
+name = "tk-monitor"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tk-contracts = { path = "../tk-contracts" }
+sysinfo = "0.31"
+tracing = { workspace = true }

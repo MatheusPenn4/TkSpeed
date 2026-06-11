@@ -1,0 +1,13 @@
+[package]
+name = "tk-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tk-contracts = { path = "../tk-contracts" }
+tk-storage = { path = "../tk-storage" }
+tk-rollback = { path = "../tk-rollback" }
+tk-optimize = { path = "../tk-optimize" }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }

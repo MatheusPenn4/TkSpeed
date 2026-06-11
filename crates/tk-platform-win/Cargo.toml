@@ -1,0 +1,10 @@
+[package]
+name = "tk-platform-win"
+version.workspace = true
+edition.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+
+[dependencies]
+thiserror = { workspace = true }

@@ -1,0 +1,10 @@
+[package]
+name = "tk-perflab"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tk-contracts = { path = "../tk-contracts" }
+sysinfo = "0.31"
+# NVML (NVIDIA) via libloading: compila em qualquer SO; falha graciosa sem driver NVIDIA.
+nvml-wrapper = "0.10"
