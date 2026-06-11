@@ -1,20 +1,15 @@
 import { NavLink } from "react-router-dom";
 
+// Apenas telas com backend funcional (A4.3 — zero telas mortas na navegação).
 const NAV = [
   { to: "/", label: "Dashboard", ico: "◈" },
-  { to: "/analysis", label: "Análise Completa", ico: "⊹" },
-  { to: "/monitoring", label: "Monitoramento", ico: "∿" },
-  { to: "/gameboost", label: "Game Boost", ico: "⚡" },
   { to: "/benchmark", label: "Performance Lab", ico: "▲" },
   { to: "/optimize", label: "Otimizações", ico: "✦" },
   { to: "/history", label: "Histórico", ico: "◷" },
-  { to: "/reports", label: "Relatórios", ico: "▤" },
 ];
 
 const SYSTEM = [
-  { to: "/diagnostics", label: "Central Diagnóstico", ico: "✛" },
   { to: "/rollback", label: "Rollback", ico: "↺" },
-  { to: "/settings", label: "Configurações", ico: "⚙" },
 ];
 
 export function Sidebar() {

@@ -103,5 +103,17 @@ export function useOptimize() {
     [refresh],
   );
 
-  return { available: isTauri(), catalog, history, running, error, run, rollback, startupAnalysis, refresh };
+  /** Desabilita um item de inicialização HKCU (reversível). Retorna o id do snapshot ou null. */
+  const disableStartup = useCallback(async (name: string): Promise<number | null> => {
+    if (!isTauri()) return null;
+    setError(null);
+    try {
+      return await invokeCmd<number>("opt_disable_startup", { name });
+    } catch (e) {
+      setError(fmtErr(e));
+      return null;
+    }
+  }, []);
+
+  return { available: isTauri(), catalog, history, running, error, run, rollback, startupAnalysis, disableStartup, refresh };
 }

@@ -30,7 +30,7 @@
 .opt-hist-item .btn { align-self: flex-start; margin-top: var(--s-2); }
 
 .startup-list { display: flex; flex-direction: column; gap: var(--s-1); }
-.startup-item { display: grid; grid-template-columns: 1fr auto 2fr; gap: var(--s-3); align-items: center; padding: var(--s-2) var(--s-3); border-radius: var(--r-sm); background: var(--bg-glass); font-size: 13px; }
+.startup-item { display: grid; grid-template-columns: 1fr auto 2fr auto; gap: var(--s-3); align-items: center; padding: var(--s-2) var(--s-3); border-radius: var(--r-sm); background: var(--bg-glass); font-size: 13px; }
 .su-name { font-weight: 600; }
 .su-loc { font-size: 11px; color: var(--text-low); }
 .su-cmd { font-size: 11px; color: var(--text-mid); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

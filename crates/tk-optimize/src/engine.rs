@@ -7,10 +7,14 @@ use tk_contracts::{
     StartupItem,
 };
 use tk_perflab::{build_noise_profile, compare, run_complete, run_cpu, run_io, run_ram};
+use tk_platform_win::registry;
 use tk_rollback::{apply_actions, verify_actions, ProtectionService, ReversibleAction};
 use tk_storage::{now_ms, AuditRepo, Db, OptRepo, PerfRepo};
 
 use crate::catalog::{self, Validation};
+
+/// Chave Run do usuário (HKCU) — inicialização reversível sem elevação.
+const STARTUP_RUN_KEY: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 
 pub struct Engine {
     db: Db,
@@ -191,6 +195,49 @@ impl Engine {
         self.protection().rollback(snap).await.map_err(|e| e.to_string())?;
         self.opt().set_status(run_id, "reverted").await.map_err(|e| e.to_string())?;
         Ok(())
+    }
+
+    /// Desabilita um item de inicialização do usuário (HKCU\...\Run) de forma
+    /// REVERSÍVEL, usando a mesma infra validada em A2: cria snapshot → remove o
+    /// valor → verifica; falha reverte. Reverter = restaurar o snapshot pelo
+    /// Rollback Center. HKLM exige admin e não é suportado aqui (honestidade).
+    /// Retorna o id do snapshot criado.
+    pub async fn disable_startup(&self, name: &str) -> Result<i64, String> {
+        let current = registry::read_string(STARTUP_RUN_KEY, name)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| {
+                "Item de inicialização não encontrado em HKCU (itens HKLM exigem administrador).".to_string()
+            })?;
+
+        // Desabilitar = remover o valor (new: None). O snapshot guarda o comando
+        // original (old: Some), então o rollback o reescreve = reabilita.
+        let action = ReversibleAction::RegistryHkcu {
+            subkey: STARTUP_RUN_KEY.into(),
+            name: name.into(),
+            old: Some(current),
+            new: None,
+        };
+
+        let snap_id = self
+            .protection()
+            .create_snapshot(&format!("startup:disable:{name}"), std::slice::from_ref(&action))
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if let Err(e) = apply_actions(std::slice::from_ref(&action)) {
+            let _ = self.protection().rollback(snap_id).await;
+            return Err(format!("Falha ao desabilitar: {e}"));
+        }
+        if !verify_actions(std::slice::from_ref(&action)).unwrap_or(false) {
+            let _ = self.protection().rollback(snap_id).await;
+            return Err("Não foi possível confirmar a desativação — revertido.".into());
+        }
+
+        self.audit()
+            .log("user", "startup.disabled", &format!("{{\"name\":\"{name}\",\"snapshot\":{snap_id}}}"))
+            .await
+            .ok();
+        Ok(snap_id)
     }
 }
 

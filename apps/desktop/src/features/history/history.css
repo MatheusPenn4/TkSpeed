@@ -1,0 +1,22 @@
+/* Histórico — consome dados reais (score + benchmarks). Estilo V2. */
+.hist { display: flex; flex-direction: column; gap: var(--s-6); max-width: var(--content-max); margin: 0 auto; }
+.hist .panel { padding: var(--s-6); }
+
+.hist-head h1 { font: var(--t-h1); }
+.hist-head p { color: var(--text-mid); margin-top: 4px; font-size: 14px; }
+
+.hist-list { display: flex; flex-direction: column; gap: var(--s-1); }
+.hist-row {
+  display: grid; grid-template-columns: auto 64px 1fr; gap: var(--s-3); align-items: center;
+  padding: var(--s-3); border-radius: var(--r-md); background: var(--bg-glass); font-size: 13px;
+}
+.hist-row.bench { grid-template-columns: auto 1fr auto auto; }
+.hist-when { color: var(--text-mid); font-size: 12px; white-space: nowrap; }
+.hist-score { font-family: var(--font-display); font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 700; }
+.hist-bench-label { color: var(--text-hi); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist-bench-kind { font-size: 11px; color: var(--text-low); text-transform: uppercase; letter-spacing: 1px; }
+
+.hist-skel { display: flex; flex-direction: column; gap: var(--s-2); }
+.hist-skel-row { height: 44px; border-radius: var(--r-md); background: var(--bg-glass); animation: rbc-shimmer 1.4s ease-in-out infinite; }
+.hist-skel-row:nth-child(2) { animation-delay: 0.15s; }
+.hist-skel-row:nth-child(3) { animation-delay: 0.3s; }

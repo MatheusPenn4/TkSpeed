@@ -267,6 +267,18 @@ pub async fn opt_startup_analysis(state: State<'_, AppContext>) -> Cmd<Vec<Start
     Ok(state.inner().clone().optimize().startup_items())
 }
 
+/// Desabilita um item de inicialização (HKCU) de forma reversível: cria um
+/// snapshot e remove o valor. Reverter = restaurar o snapshot no Rollback Center.
+/// Retorna o id do snapshot criado.
+#[tauri::command]
+pub async fn opt_disable_startup(state: State<'_, AppContext>, name: String) -> Cmd<i64> {
+    let ctx = state.inner().clone();
+    ctx.optimize()
+        .disable_startup(&name)
+        .await
+        .map_err(|m| AppError { code: "optimize".into(), message: m })
+}
+
 /// Detecta o gargalo atual amostrando ~2s (CPU/GPU/RAM).
 #[tauri::command]
 pub async fn perf_detect_bottleneck() -> Cmd<BottleneckReport> {

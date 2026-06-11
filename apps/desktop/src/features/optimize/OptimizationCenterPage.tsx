@@ -5,6 +5,8 @@ import {
   type OptimizationRunInfo,
   type StartupItem,
 } from "@/shared/hooks/useOptimize";
+import { Modal } from "@/shared/components/Modal";
+import { useToast } from "@/shared/components/Toast";
 import "./optimize.css";
 
 const DECISION: Record<OptDecision, { label: string; cls: string }> = {
@@ -36,9 +38,13 @@ function primaryDelta(run: OptimizationRunInfo): string | null {
 }
 
 export function OptimizationCenterPage() {
-  const { available, catalog, history, running, error, run, rollback, startupAnalysis } = useOptimize();
+  const { available, catalog, history, running, error, run, rollback, startupAnalysis, disableStartup } =
+    useOptimize();
+  const toast = useToast();
   const [lastRun, setLastRun] = useState<OptimizationRunInfo | null>(null);
   const [startup, setStartup] = useState<StartupItem[] | null>(null);
+  const [pendingDisable, setPendingDisable] = useState<StartupItem | null>(null);
+  const [disabling, setDisabling] = useState(false);
 
   async function onApply(id: string) {
     const r = await run(id);
@@ -47,6 +53,23 @@ export function OptimizationCenterPage() {
   async function onStartup() {
     const items = await startupAnalysis();
     if (items) setStartup(items);
+  }
+  async function onConfirmDisable() {
+    if (!pendingDisable) return;
+    setDisabling(true);
+    const snapId = await disableStartup(pendingDisable.name);
+    setDisabling(false);
+    if (snapId !== null) {
+      toast(
+        "success",
+        `"${pendingDisable.name}" desabilitado · snapshot #${snapId} criado (reversível no Rollback Center).`,
+      );
+      const items = await startupAnalysis(); // reflete a remoção
+      if (items) setStartup(items);
+    } else {
+      toast("danger", "Não foi possível desabilitar o item.");
+    }
+    setPendingDisable(null);
   }
 
   return (
@@ -116,7 +139,9 @@ export function OptimizationCenterPage() {
           <button className="btn ghost sm" onClick={onStartup} disabled={!available}>Analisar</button>
         </div>
         {startup === null ? (
-          <div className="empty-state">Lista os apps que iniciam com o Windows (HKCU/HKLM). Somente leitura.</div>
+          <div className="empty-state">
+            Lista os apps que iniciam com o Windows. Itens HKCU podem ser desabilitados de forma reversível.
+          </div>
         ) : startup.length === 0 ? (
           <div className="empty-state ok">Nenhum app de inicialização em Run (HKCU/HKLM).</div>
         ) : (
@@ -126,11 +151,46 @@ export function OptimizationCenterPage() {
                 <span className="su-name">{s.name}</span>
                 <span className="su-loc">{s.location}</span>
                 <span className="su-cmd mono">{s.command}</span>
+                {s.location === "HKCU" ? (
+                  <button className="btn ghost sm" onClick={() => setPendingDisable(s)} disabled={!available}>
+                    Desabilitar
+                  </button>
+                ) : (
+                  <button className="btn ghost sm" disabled title="Itens HKLM exigem administrador">
+                    Requer admin
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      <Modal
+        open={!!pendingDisable}
+        title="Desabilitar item de inicialização?"
+        onClose={() => (disabling ? undefined : setPendingDisable(null))}
+        footer={
+          <>
+            <button className="btn ghost" onClick={() => setPendingDisable(null)} disabled={disabling}>
+              Cancelar
+            </button>
+            <button className="btn primary" onClick={onConfirmDisable} disabled={disabling}>
+              {disabling ? "Desabilitando…" : "Desabilitar"}
+            </button>
+          </>
+        }
+      >
+        {pendingDisable && (
+          <>
+            O item deixará de iniciar com o Windows. Será criado um snapshot — você pode reabilitá-lo a qualquer
+            momento pelo <strong>Rollback Center</strong>.
+            <p style={{ marginTop: "var(--s-3)" }}>
+              Item: <strong>{pendingDisable.name}</strong>
+            </p>
+          </>
+        )}
+      </Modal>
 
       {/* Histórico */}
       <section className="glass panel">

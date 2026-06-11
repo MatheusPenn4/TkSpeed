@@ -62,6 +62,7 @@ fn main() {
             bridge::opt_history,
             bridge::opt_rollback,
             bridge::opt_startup_analysis,
+            bridge::opt_disable_startup,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o TkSpeed");

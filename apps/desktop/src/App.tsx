@@ -5,7 +5,7 @@ import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { PerformanceLabPage } from "./features/perflab/PerformanceLabPage";
 import { OptimizationCenterPage } from "./features/optimize/OptimizationCenterPage";
 import { RollbackCenterPage } from "./features/rollback/RollbackCenterPage";
-import { Placeholder } from "./app/shell/Placeholder";
+import { HistoryPage } from "./features/history/HistoryPage";
 import { ErrorBoundary, FatalErrorView } from "./shared/components/ErrorBoundary";
 import { ToastProvider } from "./shared/components/Toast";
 import { invokeCmd, isTauri } from "./shared/lib/tauri";
@@ -49,16 +49,12 @@ export function App() {
             ) : (
               <Routes>
                 <Route path="/" element={<DashboardPage />} />
-                <Route path="/analysis" element={<Placeholder title="Análise Completa" />} />
-                <Route path="/monitoring" element={<Placeholder title="Monitoramento" />} />
-                <Route path="/gameboost" element={<Placeholder title="Game Boost" />} />
                 <Route path="/benchmark" element={<PerformanceLabPage />} />
                 <Route path="/optimize" element={<OptimizationCenterPage />} />
-                <Route path="/history" element={<Placeholder title="Histórico · Digital Twin" />} />
-                <Route path="/reports" element={<Placeholder title="Relatórios" />} />
-                <Route path="/diagnostics" element={<Placeholder title="Central de Diagnóstico" />} />
+                <Route path="/history" element={<HistoryPage />} />
                 <Route path="/rollback" element={<RollbackCenterPage />} />
-                <Route path="/settings" element={<Placeholder title="Configurações" />} />
+                {/* Rotas sem backend funcional foram removidas (A4.3): qualquer
+                    caminho desconhecido cai no Dashboard — zero telas mortas. */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             )}
