@@ -1,0 +1,259 @@
+/* ============================================================================
+   TkSpeed Design System V3 — "APEX × Quantum Mint"
+   Instrument-grade / Performance Engineering. Coexiste com o Aurora (V1/V2):
+   tokens com nomes próprios (--ax-*, --signal, --ion, grafite) — as telas
+   antigas continuam no Aurora até serem migradas.
+   ============================================================================ */
+:root {
+  /* ---- Substrato grafite anodizado (profundidade por camadas) ---- */
+  --void: #08090c;
+  --base: #0d0f14;
+  --panel: #13161d;
+  --raised: #1a1e27;
+  --machined: #222732;
+  --hairline: rgba(255, 255, 255, 0.07);
+  --hairline-strong: rgba(255, 255, 255, 0.13);
+  --edge-hi: rgba(255, 255, 255, 0.06); /* inset highlight "usinado" no topo */
+
+  /* ---- Tinta ---- */
+  --ink-hi: #f2f5fa;
+  --ink-mid: #9ba6b7;
+  --ink-low: #5a6473;
+  --ink-faint: #353c49;
+
+  /* ---- Quantum Mint (dual-signal) ---- */
+  --signal: #58f2d2;          /* MINT — sinalização/ação (nav ativo, CTA, foco, "medindo", lock) */
+  --ion: #39c7ff;             /* ION  — camada de DADOS (score, benchmark, telemetria, gráficos) */
+  --signal-grad: linear-gradient(135deg, #58f2d2 0%, #39c7ff 100%);
+  --mint-dim: rgba(88, 242, 210, 0.14);
+  --ion-dim: rgba(57, 199, 255, 0.14);
+  --signal-ink: #06231d;      /* tinta escura sobre fill mint (alto contraste) */
+
+  /* ---- Semânticas (sóbrias; mint NÃO é sucesso) ---- */
+  --ok: #46c88a;
+  --warn: #e8b84b;
+  --risk: #ef6e6e;
+  --info: #6e93ff;
+
+  /* ---- Tipografia ---- */
+  --ax-font-display: "Geist", "Inter", system-ui, -apple-system, sans-serif;
+  --ax-font-ui: "Geist", "Inter", system-ui, -apple-system, sans-serif;
+  --ax-font-data: "Geist Mono", "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
+
+  /* ---- Raios (fechados = engenharia, não macio) ---- */
+  --ax-r-xs: 4px;
+  --ax-r-sm: 6px;
+  --ax-r-md: 10px;
+  --ax-r-lg: 14px;
+  --ax-r-pill: 999px;
+
+  /* ---- Elevação por luz (não fumaça) ---- */
+  --ax-elev-1: inset 0 1px 0 var(--edge-hi);
+  --ax-elev-2: inset 0 1px 0 var(--edge-hi), 0 2px 10px rgba(0, 0, 0, 0.4);
+  --ax-elev-float: inset 0 1px 0 var(--edge-hi), 0 24px 64px rgba(0, 0, 0, 0.6);
+  --ax-focus: 0 0 0 2px var(--base), 0 0 0 4px var(--signal);
+
+  /* ---- Movimento "settle" ---- */
+  --ax-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ax-t-instant: 90ms;
+  --ax-t-fast: 140ms;
+  --ax-t-base: 220ms;
+  --ax-t-slow: 360ms;
+  --ax-t-gauge: 700ms;
+
+  /* ---- Layout ---- */
+  --ax-rail-w: 248px;
+  --ax-rail-w-collapsed: 64px;
+  --ax-content-max: 1440px;
+  --ax-z-modal: 1000;
+  --ax-z-toast: 1100;
+  --ax-z-cmdk: 1200;
+}
+
+/* Utilidades de tipografia de dados (instrumento). */
+.ax-data { font-family: var(--ax-font-data); font-variant-numeric: tabular-nums; }
+.ax-display { font-family: var(--ax-font-display); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-anim, .ax-anim * { animation: none !important; transition: none !important; }
+}
+
+/* ============================ Superfícies / Card ============================ */
+.ax-surface {
+  background: var(--raised);
+  border: 1px solid var(--hairline);
+  border-radius: var(--ax-r-lg);
+  box-shadow: var(--ax-elev-1);
+}
+.ax-card { padding: 20px; }
+.ax-card-pad-lg { padding: 28px; }
+.ax-card-hover { transition: border-color var(--ax-t-base) var(--ax-ease), transform var(--ax-t-base) var(--ax-ease); }
+.ax-card-hover:hover { border-color: var(--hairline-strong); transform: translateY(-2px); }
+
+.ax-label { font: 600 11px/1.2 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1.5px; color: var(--ink-low); }
+.ax-h2 { font: 600 17px/1.3 var(--ax-font-display); color: var(--ink-hi); }
+.ax-h1 { font: 600 22px/1.2 var(--ax-font-display); color: var(--ink-hi); }
+
+/* ============================ Botão ============================ */
+.ax-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font: 600 13px/1 var(--ax-font-ui);
+  padding: 0 16px; height: 38px; border-radius: var(--ax-r-md);
+  border: 1px solid var(--hairline-strong); background: var(--machined); color: var(--ink-hi);
+  cursor: pointer; transition: all var(--ax-t-fast) var(--ax-ease); white-space: nowrap;
+}
+.ax-btn:hover { border-color: var(--ink-low); background: #262c38; }
+.ax-btn:active { transform: scale(0.99); }
+.ax-btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
+.ax-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.ax-btn-primary { background: var(--signal); color: var(--signal-ink); border: 0; }
+.ax-btn-primary:hover { background: #6cf6da; box-shadow: 0 0 24px var(--mint-dim); }
+.ax-btn-ghost { background: transparent; border-color: var(--hairline); }
+.ax-btn-ghost:hover { background: var(--machined); }
+.ax-btn-sm { height: 30px; padding: 0 12px; font-size: 12px; }
+
+/* ============================ Badge / pílula ============================ */
+.ax-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 600 11px/1 var(--ax-font-ui); letter-spacing: 0.3px;
+  padding: 4px 10px; border-radius: var(--ax-r-pill); border: 1px solid var(--hairline-strong);
+  color: var(--ink-mid); white-space: nowrap;
+}
+.ax-badge .ax-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.ax-badge-signal { color: var(--signal); border-color: rgba(88, 242, 210, 0.4); background: var(--mint-dim); }
+.ax-badge-ion { color: var(--ion); border-color: rgba(57, 199, 255, 0.4); background: var(--ion-dim); }
+.ax-badge-ok { color: var(--ok); border-color: rgba(70, 200, 138, 0.4); background: rgba(70, 200, 138, 0.08); }
+.ax-badge-warn { color: var(--warn); border-color: rgba(232, 184, 75, 0.4); background: rgba(232, 184, 75, 0.08); }
+.ax-badge-risk { color: var(--risk); border-color: rgba(239, 110, 110, 0.4); background: rgba(239, 110, 110, 0.08); }
+.ax-badge-neutral { color: var(--ink-mid); }
+
+/* ============================ Metric Card ============================ */
+.ax-metric { display: flex; flex-direction: column; gap: 6px; }
+.ax-metric-k { font: 600 11px/1.2 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1.2px; color: var(--ink-low); }
+.ax-metric-v { font: 600 30px/1 var(--ax-font-data); font-variant-numeric: tabular-nums; color: var(--ink-hi); }
+.ax-metric-v .ax-unit { font-size: 14px; color: var(--ink-low); font-weight: 500; }
+.ax-metric-sub { font: 500 12px/1.3 var(--ax-font-data); color: var(--ink-mid); }
+.ax-metric-ion .ax-metric-v { color: var(--ion); }
+
+/* ============================ Signal-Lock Meter (assinatura) ============================ */
+.ax-lock { display: flex; align-items: center; gap: 10px; }
+.ax-lock-bars { display: inline-flex; gap: 3px; align-items: flex-end; height: 18px; }
+.ax-lock-bar { width: 4px; border-radius: 1px; background: var(--ink-faint); transition: background var(--ax-t-base) var(--ax-ease), height var(--ax-t-base) var(--ax-ease); }
+.ax-lock.locked .ax-lock-bar.on { background: var(--signal); }
+.ax-lock.unstable .ax-lock-bar.on { background: var(--warn); }
+.ax-lock-label { font: 600 12px/1 var(--ax-font-data); color: var(--ink-mid); }
+.ax-lock.locked .ax-lock-label { color: var(--signal); }
+.ax-lock.unstable .ax-lock-label { color: var(--warn); }
+
+/* ============================ Evidence Card (assinatura) ============================ */
+.ax-evidence { display: flex; flex-direction: column; gap: 14px; }
+.ax-evidence-head { display: flex; align-items: center; justify-content: space-between; }
+.ax-evidence-traces { display: flex; gap: 16px; }
+.ax-trace { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.ax-trace-k { font: 600 11px/1 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1px; color: var(--ink-low); }
+.ax-trace-svg { width: 100%; height: 48px; display: block; }
+.ax-trace-before path { stroke: var(--ink-low); }
+.ax-trace-after path { stroke: var(--ion); }
+.ax-evidence-verdict { display: flex; align-items: center; gap: 10px; font: 600 13px/1 var(--ax-font-data); }
+
+/* ============================ Modal ============================ */
+.ax-modal-overlay {
+  position: fixed; inset: 0; z-index: var(--ax-z-modal);
+  background: rgba(8, 9, 12, 0.66); backdrop-filter: blur(8px);
+  display: grid; place-items: center; padding: 24px; animation: ax-fade var(--ax-t-fast) var(--ax-ease);
+}
+.ax-modal {
+  width: 100%; max-width: 460px; background: var(--panel);
+  border: 1px solid var(--hairline); border-radius: var(--ax-r-lg);
+  box-shadow: var(--ax-elev-float); animation: ax-rise var(--ax-t-base) var(--ax-ease);
+}
+.ax-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--hairline); }
+.ax-modal-head h2 { font: 600 17px/1.2 var(--ax-font-display); color: var(--ink-hi); }
+.ax-modal-x { display: grid; place-items: center; width: 30px; height: 30px; border: 0; background: transparent; color: var(--ink-mid); border-radius: var(--ax-r-sm); cursor: pointer; }
+.ax-modal-x:hover { background: var(--machined); color: var(--ink-hi); }
+.ax-modal-body { padding: 22px; color: var(--ink-mid); font: 400 14px/1.55 var(--ax-font-ui); }
+.ax-modal-body strong { color: var(--ink-hi); }
+.ax-modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px; border-top: 1px solid var(--hairline); }
+
+/* ============================ Toast ============================ */
+.ax-toast-wrap { position: fixed; right: 24px; bottom: 24px; z-index: var(--ax-z-toast); display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.ax-toast {
+  display: flex; align-items: center; gap: 12px; max-width: 380px;
+  padding: 12px 16px; border-radius: var(--ax-r-md); background: var(--raised);
+  border: 1px solid var(--hairline); border-left: 3px solid var(--signal);
+  box-shadow: var(--ax-elev-2); color: var(--ink-hi); font: 500 13px/1.4 var(--ax-font-ui);
+  animation: ax-rise var(--ax-t-base) var(--ax-ease);
+}
+.ax-toast-ok { border-left-color: var(--ok); }
+.ax-toast-ok .ax-toast-i { color: var(--ok); }
+.ax-toast-danger { border-left-color: var(--risk); }
+.ax-toast-danger .ax-toast-i { color: var(--risk); }
+.ax-toast-signal { border-left-color: var(--signal); }
+.ax-toast-signal .ax-toast-i { color: var(--signal); }
+
+/* ============================ Empty / Em breve ============================ */
+.ax-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 64px 24px; }
+.ax-empty-ico { width: 64px; height: 64px; border-radius: var(--ax-r-pill); display: grid; place-items: center; background: var(--panel); border: 1px solid var(--hairline); color: var(--ink-low); margin-bottom: 6px; }
+.ax-empty-title { font: 600 17px/1.3 var(--ax-font-display); color: var(--ink-hi); }
+.ax-empty-desc { font: 400 13px/1.55 var(--ax-font-ui); color: var(--ink-mid); max-width: 400px; }
+.ax-empty-soon .ax-empty-ico { color: var(--signal); border-color: rgba(88, 242, 210, 0.3); background: var(--mint-dim); }
+
+/* ============================ Rail (navegação) ============================ */
+.ax-rail { width: var(--ax-rail-w); flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; padding: 16px 12px; border-right: 1px solid var(--hairline); background: var(--base); overflow-y: auto; }
+.ax-rail-brand { display: flex; align-items: center; gap: 10px; padding: 8px 10px 16px; }
+.ax-rail-logo { width: 22px; height: 22px; border-radius: 6px; background: var(--signal-grad); box-shadow: 0 0 16px var(--mint-dim); flex-shrink: 0; }
+.ax-rail-brand b { font: 600 16px/1 var(--ax-font-display); letter-spacing: 0.3px; color: var(--ink-hi); }
+.ax-rail-group { font: 600 10px/1.2 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1.5px; color: var(--ink-faint); padding: 16px 10px 6px; }
+.ax-nav { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: var(--ax-r-md); color: var(--ink-mid); text-decoration: none; font: 500 13px/1 var(--ax-font-ui); position: relative; transition: all var(--ax-t-fast) var(--ax-ease); }
+.ax-nav:hover { background: var(--panel); color: var(--ink-hi); }
+.ax-nav.active { background: var(--panel); color: var(--ink-hi); }
+.ax-nav.active::before { content: ""; position: absolute; left: 0; top: 22%; bottom: 22%; width: 3px; border-radius: var(--ax-r-pill); background: var(--signal); box-shadow: 0 0 10px var(--signal); }
+.ax-nav .ax-nav-ico { color: var(--ink-low); display: inline-flex; }
+.ax-nav.active .ax-nav-ico { color: var(--signal); }
+.ax-nav-soon { margin-left: auto; font: 600 9px/1 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 0.5px; color: var(--ink-faint); border: 1px solid var(--hairline); border-radius: var(--ax-r-pill); padding: 3px 6px; }
+.ax-rail-foot { margin-top: auto; padding: 12px 10px 4px; font: 500 11px/1.4 var(--ax-font-data); color: var(--ink-faint); border-top: 1px solid var(--hairline); }
+.ax-cmdk-hint { display: flex; align-items: center; gap: 8px; padding: 9px 10px; margin-top: 4px; border-radius: var(--ax-r-md); border: 1px solid var(--hairline); color: var(--ink-low); font: 500 12px/1 var(--ax-font-ui); cursor: pointer; transition: all var(--ax-t-fast) var(--ax-ease); }
+.ax-cmdk-hint:hover { border-color: var(--hairline-strong); color: var(--ink-mid); }
+.ax-kbd { font: 600 10px/1 var(--ax-font-data); padding: 3px 6px; border-radius: var(--ax-r-xs); background: var(--machined); border: 1px solid var(--hairline); color: var(--ink-mid); margin-left: auto; }
+
+/* ============================ Command Palette ============================ */
+.ax-cmdk-overlay { position: fixed; inset: 0; z-index: var(--ax-z-cmdk); background: rgba(8, 9, 12, 0.55); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: flex-start; padding-top: 14vh; animation: ax-fade var(--ax-t-fast) var(--ax-ease); }
+.ax-cmdk { width: 100%; max-width: 560px; background: var(--panel); border: 1px solid var(--hairline-strong); border-radius: var(--ax-r-lg); box-shadow: var(--ax-elev-float); overflow: hidden; animation: ax-rise var(--ax-t-base) var(--ax-ease); }
+.ax-cmdk-input-row { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--hairline); }
+.ax-cmdk-input { flex: 1; background: transparent; border: 0; outline: none; color: var(--ink-hi); font: 400 16px/1 var(--ax-font-ui); }
+.ax-cmdk-input::placeholder { color: var(--ink-low); }
+.ax-cmdk-list { max-height: 360px; overflow-y: auto; padding: 8px; }
+.ax-cmdk-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--ax-r-md); color: var(--ink-mid); cursor: pointer; font: 500 14px/1 var(--ax-font-ui); }
+.ax-cmdk-item .ax-cmdk-ico { color: var(--ink-low); display: inline-flex; }
+.ax-cmdk-item.sel { background: var(--machined); color: var(--ink-hi); }
+.ax-cmdk-item.sel .ax-cmdk-ico { color: var(--signal); }
+.ax-cmdk-item .ax-cmdk-grp { margin-left: auto; font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 1px; }
+.ax-cmdk-empty { padding: 28px; text-align: center; color: var(--ink-low); font: 400 13px/1.4 var(--ax-font-ui); }
+
+/* ============================ Branding ============================ */
+.ax-brand-header { display: flex; align-items: center; gap: 11px; padding: 8px 10px 16px; }
+.ax-brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+.ax-brand-text b { font: 600 16px/1 var(--ax-font-display); letter-spacing: 0.3px; color: var(--ink-hi); }
+.ax-brand-text span { font: 500 9px/1.2 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1.6px; color: var(--ink-low); margin-top: 3px; }
+
+/* Splash V3 */
+.ax-splash { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; background: radial-gradient(900px 600px at 50% 40%, #11151d 0%, var(--void) 70%); }
+.ax-splash-inner { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.ax-splash-sym { animation: ax-splash-in 700ms var(--ax-ease) both; filter: drop-shadow(0 0 32px var(--mint-dim)); }
+.ax-splash-logo { animation: ax-splash-in 700ms var(--ax-ease) 140ms both; opacity: 0; }
+.ax-splash-sub { font: 500 13px/1.4 var(--ax-font-ui); letter-spacing: 0.4px; color: var(--ink-mid); animation: ax-splash-in 700ms var(--ax-ease) 280ms both; opacity: 0; }
+@keyframes ax-splash-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* Conteúdo do empty state acima da marca-d'água */
+.ax-empty-ico, .ax-empty-title, .ax-empty-desc { position: relative; z-index: 1; }
+
+/* Símbolo embutido em componentes (modal/cmdk/toast) */
+.ax-brand-mark { flex-shrink: 0; }
+.ax-modal-head .ax-brand-mark { margin-right: 2px; }
+.ax-toast .ax-brand-mark { margin-left: auto; opacity: 0.5; }
+
+/* ============================ Keyframes ============================ */
+@keyframes ax-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ax-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ax-shimmer { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+@keyframes ax-lock-pulse { 0%, 100% { box-shadow: 0 0 0 rgba(88, 242, 210, 0); } 50% { box-shadow: 0 0 16px var(--mint-dim); } }
