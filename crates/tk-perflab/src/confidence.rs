@@ -39,15 +39,12 @@ fn is_quality_metric(metric: &str) -> bool {
 
 /// Categoria → default de ruído (CV% típico entre sessões num laptop).
 fn default_noise(metric: &str) -> f64 {
-    if metric.starts_with("cpu") {
-        8.0
-    } else if metric.starts_with("ram") {
-        8.0
-    } else if metric.starts_with("io") {
+    if metric.starts_with("io") {
         12.0
     } else if metric.starts_with("fps") || metric.starts_with("frametime") {
         6.0
     } else {
+        // cpu, ram e demais categorias: ruído típico de ~8% entre sessões.
         8.0
     }
 }
@@ -159,7 +156,7 @@ mod tests {
     #[test]
     fn high_variance_is_low_confidence() {
         let q = assess(&[m("cpu_multi", 10000.0, 1500.0)], None, None); // CV 15%
-        assert!(q.confidence < STABLE_MIN as u8, "conf={}", q.confidence);
+        assert!(q.confidence < STABLE_MIN, "conf={}", q.confidence);
         assert!(!q.stable);
     }
 

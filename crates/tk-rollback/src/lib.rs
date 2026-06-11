@@ -472,3 +472,201 @@ fn integrity(entries: &[SnapshotEntryRow]) -> String {
     }
     format!("{:016x}", h.finish())
 }
+
+// ───────────────────────── Testes (A2.1 + A2.4) ─────────────────────────
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entry(key: &str, old: &str) -> SnapshotEntryRow {
+        SnapshotEntryRow {
+            target_type: "registry".into(),
+            target_key: key.into(),
+            old_value_json: Some(old.into()),
+            new_value_json: None,
+        }
+    }
+
+    // ── integridade: determinística e sensível a alterações ──
+    #[test]
+    fn integrity_is_deterministic_and_sensitive() {
+        let a = [entry("A\\B", "{\"value\":\"x\"}")];
+        let b = [entry("A\\B", "{\"value\":\"x\"}")];
+        assert_eq!(integrity(&a), integrity(&b), "mesmas entradas → mesmo hash");
+
+        let c = [entry("A\\B", "{\"value\":\"y\"}")]; // valor diferente
+        assert_ne!(integrity(&a), integrity(&c), "valor diferente → hash diferente");
+
+        let d = [entry("A\\C", "{\"value\":\"x\"}")]; // chave diferente
+        assert_ne!(integrity(&a), integrity(&d), "chave diferente → hash diferente");
+    }
+
+    // ── FileQuarantine: ciclo completo com DB (cross-platform) ──
+    // capture(arquivo)→snapshot→apply(move p/ quarentena)→rollback(restaura)→verify
+    #[tokio::test]
+    async fn file_quarantine_full_cycle_with_db() {
+        let dir = std::env::temp_dir().join(format!("tkspeed_fq_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let original = dir.join("victim.tmp");
+        std::fs::write(&original, b"hello world").unwrap();
+        let size = std::fs::metadata(&original).unwrap().len();
+        let q = dir.join("q").join("victim.tmp");
+
+        let action = ReversibleAction::FileQuarantine {
+            original: original.to_string_lossy().into_owned(),
+            quarantine: q.to_string_lossy().into_owned(),
+            size,
+        };
+
+        let dbfile = dir.join("fq.db");
+        let db = tk_storage::open(&dbfile.to_string_lossy()).await.unwrap();
+        let svc = ProtectionService::new(db);
+
+        // snapshot → apply: arquivo vai para a quarentena; freed == tamanho
+        let snap_id = svc.create_snapshot("cleanup", std::slice::from_ref(&action)).await.unwrap();
+        let freed = apply_actions(std::slice::from_ref(&action)).unwrap();
+        assert_eq!(freed, size, "bytes liberados == tamanho do arquivo");
+        assert!(!original.exists(), "original foi movido");
+        assert!(q.exists(), "arquivo está na quarentena");
+
+        // rollback (restore_entry "file") → arquivo volta ao local original, intacto
+        let outcome = svc.rollback(snap_id).await.unwrap();
+        assert!(outcome.ok, "rollback OK");
+        assert!(original.exists(), "arquivo restaurado ao local original");
+        assert_eq!(std::fs::read(&original).unwrap(), b"hello world", "conteúdo intacto");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ── RegistryHkcu (string): aplicar→verificar→reverter→verificar ──
+    #[cfg(windows)]
+    #[test]
+    fn registry_hkcu_string_cycle() {
+        let sub = format!("Software\\TkSpeedTest\\rbstr_{}", std::process::id());
+        let name = "Val";
+        let _ = registry::delete_value(&sub, name);
+        let old = registry::read_string(&sub, name).unwrap(); // None
+
+        let apply = vec![ReversibleAction::RegistryHkcu {
+            subkey: sub.clone(),
+            name: name.into(),
+            old: old.clone(),
+            new: Some("123".into()),
+        }];
+        apply_actions(&apply).unwrap();
+        assert!(verify_actions(&apply).unwrap(), "novo valor efetivado");
+        assert_eq!(registry::read_string(&sub, name).unwrap(), Some("123".to_string()));
+
+        // reverter = aplicar a ação inversa (new = estado original)
+        let revert = vec![ReversibleAction::RegistryHkcu {
+            subkey: sub.clone(),
+            name: name.into(),
+            old: Some("123".into()),
+            new: old.clone(),
+        }];
+        apply_actions(&revert).unwrap();
+        assert_eq!(registry::read_string(&sub, name).unwrap(), old, "estado original restaurado");
+
+        let _ = registry::delete_value(&sub, name);
+    }
+
+    // ── RegistryHkcuDword: aplicar→verificar→reverter→verificar (old = Some) ──
+    #[cfg(windows)]
+    #[test]
+    fn registry_hkcu_dword_cycle() {
+        let sub = format!("Software\\TkSpeedTest\\rbdw_{}", std::process::id());
+        let name = "Num";
+        registry::write_u32(&sub, name, 1).unwrap(); // estado inicial conhecido
+        let old = registry::read_u32(&sub, name).unwrap(); // Some(1)
+
+        let apply = vec![ReversibleAction::RegistryHkcuDword {
+            subkey: sub.clone(),
+            name: name.into(),
+            old,
+            new: Some(0),
+        }];
+        apply_actions(&apply).unwrap();
+        assert!(verify_actions(&apply).unwrap());
+        assert_eq!(registry::read_u32(&sub, name).unwrap(), Some(0));
+
+        let revert = vec![ReversibleAction::RegistryHkcuDword {
+            subkey: sub.clone(),
+            name: name.into(),
+            old: Some(0),
+            new: old,
+        }];
+        apply_actions(&revert).unwrap();
+        assert_eq!(registry::read_u32(&sub, name).unwrap(), old, "DWORD original restaurado");
+
+        let _ = registry::delete_value(&sub, name);
+    }
+
+    // ── PowerPlan: aplicar→verificar para o MESMO plano (no-op seguro) ──
+    #[cfg(windows)]
+    #[test]
+    fn power_plan_set_to_self_is_safe() {
+        let current = match power::get_active_scheme() {
+            Ok(g) => g,
+            Err(_) => return, // sem powercfg → não falha o suite
+        };
+        let action = vec![ReversibleAction::PowerPlan {
+            old_guid: current.clone(),
+            new_guid: current.clone(),
+        }];
+        apply_actions(&action).unwrap();
+        assert!(verify_actions(&action).unwrap(), "plano ativo confirmado");
+        assert_eq!(power::get_active_scheme().unwrap(), current, "plano inalterado");
+    }
+
+    // ── A2.4: ciclo COMPLETO com DB — capture→snapshot→apply→verify→rollback→verify ──
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn integration_full_cycle_with_db() {
+        let dbfile = std::env::temp_dir().join(format!("tkspeed_it_{}.db", std::process::id()));
+        let _ = std::fs::remove_file(&dbfile);
+        let db = tk_storage::open(&dbfile.to_string_lossy()).await.unwrap();
+        let svc = ProtectionService::new(db);
+
+        let sub = format!("Software\\TkSpeedTest\\it_{}", std::process::id());
+        let name = "Cycle";
+        let _ = registry::delete_value(&sub, name);
+        let original = registry::read_string(&sub, name).unwrap(); // capture (None)
+
+        let action = ReversibleAction::RegistryHkcu {
+            subkey: sub.clone(),
+            name: name.into(),
+            old: original.clone(),
+            new: Some("999".into()),
+        };
+
+        // snapshot (estado original) → apply → verify
+        let snap_id = svc.create_snapshot("integration", std::slice::from_ref(&action)).await.unwrap();
+        apply_actions(std::slice::from_ref(&action)).unwrap();
+        assert_eq!(registry::read_string(&sub, name).unwrap(), Some("999".to_string()), "valor aplicado");
+
+        // rollback (restore_entry + checagem de integridade) → verify final
+        let outcome = svc.rollback(snap_id).await.unwrap();
+        assert!(outcome.ok, "rollback OK");
+        assert_eq!(outcome.restored, 1, "1 entrada restaurada");
+        assert_eq!(registry::read_string(&sub, name).unwrap(), original, "estado ORIGINAL restaurado");
+
+        let _ = registry::delete_value(&sub, name);
+        let _ = std::fs::remove_file(&dbfile);
+    }
+
+    // ── A2.4: o autoteste de produção (pilot MenuShowDelay) passa de ponta a ponta ──
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn integration_production_selftest_passes() {
+        let dbfile = std::env::temp_dir().join(format!("tkspeed_st_{}.db", std::process::id()));
+        let _ = std::fs::remove_file(&dbfile);
+        let db = tk_storage::open(&dbfile.to_string_lossy()).await.unwrap();
+        let svc = ProtectionService::new(db);
+
+        let report = svc.selftest().await.unwrap();
+        assert!(report.passed, "autoteste capture→apply→verify→rollback→verify deve passar");
+        assert!(report.steps.iter().all(|s| s.ok), "todos os passos OK");
+
+        let _ = std::fs::remove_file(&dbfile);
+    }
+}

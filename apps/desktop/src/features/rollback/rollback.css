@@ -1,0 +1,74 @@
+/* Rollback Center — primeira tela 100% V2 (referência visual do sistema). */
+.rbc { display: flex; flex-direction: column; gap: var(--s-6); max-width: var(--content-max); margin: 0 auto; }
+
+.rbc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-6); }
+.rbc-head h1 { font: var(--t-h1); }
+.rbc-head p { color: var(--text-mid); margin-top: 4px; font-size: 14px; max-width: 560px; }
+
+.rbc-stats { display: flex; gap: var(--s-3); }
+.rbc-stat {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-end;
+  padding: var(--s-3) var(--s-4); border-radius: var(--r-md);
+  background: var(--bg-raised); border: 1px solid var(--stroke); min-width: 96px;
+}
+.rbc-stat-k { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-low); }
+.rbc-stat strong { font: var(--t-metric); font-size: 24px; }
+
+.rbc-panel { padding: var(--s-3) var(--s-4); }
+.banner { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-3) var(--s-4);
+  border-left: 3px solid var(--warning); color: var(--text-mid); font-size: 13px; border-radius: 0; }
+
+/* ── Tabela ── */
+.rbc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.rbc-table thead th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-low); font-weight: 700; padding: var(--s-3); border-bottom: 1px solid var(--stroke);
+}
+.rbc-col-action { text-align: right; }
+.rbc-row { cursor: pointer; transition: background var(--t-fast) var(--ease); }
+.rbc-row > td { padding: var(--s-3); border-bottom: 1px solid var(--stroke); vertical-align: middle; }
+.rbc-row:hover { background: var(--bg-glass); }
+.rbc-row.open { background: var(--bg-glass-strong); }
+.rbc-row.open > td { border-bottom: 0; }
+.rbc-chev { width: 28px; color: var(--text-low); }
+.rbc-when { color: var(--text-mid); font-size: 12px; white-space: nowrap; }
+.rbc-target { color: var(--text-hi); font-weight: 500; }
+.rbc-noaction { color: var(--text-low); }
+
+.rbc-row .btn.sm { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ── Detalhe / evidência ── */
+.rbc-detail-row > td { padding: 0 var(--s-3) var(--s-4); border-bottom: 1px solid var(--stroke); }
+.rbc-evi {
+  background: var(--bg-sunken); border: 1px solid var(--stroke); border-radius: var(--r-md);
+  padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3);
+}
+.rbc-evi-kv { display: inline-flex; flex-direction: column; gap: 2px; margin-right: var(--s-6); }
+.rbc-evi-kv span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-low); }
+.rbc-evi-kv strong { font-size: 14px; color: var(--text-hi); }
+.rbc-evi-kv.full { display: flex; width: 100%; }
+.rbc-evi-kv.full strong { word-break: break-all; color: var(--text-mid); font-size: 12px; }
+
+.rbc-evi-line { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; font-size: 13px; color: var(--text-mid); }
+.rbc-evi-bench { color: var(--text-low); font-size: 12px; }
+.rbc-evi-msg { font-size: 13px; color: var(--text-mid); line-height: 1.5; }
+
+.rbc-cmp { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: var(--s-2); }
+.rbc-cmp th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-low); padding: var(--s-2) var(--s-3); }
+.rbc-cmp td { padding: var(--s-2) var(--s-3); border-top: 1px solid var(--stroke); color: var(--text-hi); }
+.rbc-cmp .num { text-align: right; font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+.rbc-cmp .num small { color: var(--text-low); font-weight: 400; }
+
+/* ── Skeleton (loading) ── */
+.rbc-skeleton { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-3); }
+.rbc-skel-row { height: 44px; border-radius: var(--r-md); background: var(--bg-glass);
+  animation: rbc-shimmer 1.4s ease-in-out infinite; }
+.rbc-skel-row:nth-child(2) { animation-delay: 0.15s; }
+.rbc-skel-row:nth-child(3) { animation-delay: 0.3s; }
+@keyframes rbc-shimmer { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+@media (max-width: 1080px) {
+  .rbc-head { flex-direction: column; }
+  .rbc-table .rbc-when { display: none; }
+}

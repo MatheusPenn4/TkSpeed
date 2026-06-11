@@ -9,6 +9,9 @@ node_modules
 dist
 .pnpm-store
 
+# Bindings TS gerados pelo ts-rs (regerados a cada `cargo test`; tipos espelhados à mão no frontend)
+crates/tk-contracts/bindings/
+
 # Tauri
 src-tauri/gen
 src-tauri/target

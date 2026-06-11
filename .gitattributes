@@ -1,0 +1,25 @@
+# Normaliza fim de linha no repositório: LF no commit, nativo no checkout.
+# Resolve o churn "LF will be replaced by CRLF" visto no commit inicial.
+* text=auto eol=lf
+
+# Código e config — sempre LF
+*.rs    text eol=lf
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.json  text eol=lf
+*.toml  text eol=lf
+*.sql   text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+
+# Scripts PowerShell — CRLF (convenção Windows)
+*.ps1   text eol=crlf
+
+# Binários — nunca normalizar
+*.png   binary
+*.ico   binary
+*.icns  binary
+*.lock  text eol=lf

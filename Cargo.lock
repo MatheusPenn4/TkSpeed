@@ -4197,6 +4197,7 @@ dependencies = [
  "tk-contracts",
  "tk-platform-win",
  "tk-storage",
+ "tokio",
  "tracing",
 ]
 

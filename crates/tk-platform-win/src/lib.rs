@@ -225,3 +225,62 @@ pub mod power {
 // Placeholders para fases futuras.
 pub mod services {}
 pub mod process {}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use crate::{power, registry};
+
+    // Subchave de teste isolada por processo (HKCU, sem elevação). Limpa ao final.
+    fn subkey(tag: &str) -> String {
+        format!("Software\\TkSpeedTest\\{}_{}", tag, std::process::id())
+    }
+
+    #[test]
+    fn registry_string_write_read_delete() {
+        let sub = subkey("str");
+        let name = "Val";
+        let _ = registry::delete_value(&sub, name);
+
+        // ausente → None
+        assert_eq!(registry::read_string(&sub, name).unwrap(), None);
+        // escreve → lê de volta
+        registry::write_string(&sub, name, "hello").unwrap();
+        assert_eq!(registry::read_string(&sub, name).unwrap(), Some("hello".to_string()));
+        // atualiza → novo valor
+        registry::write_string(&sub, name, "world").unwrap();
+        assert_eq!(registry::read_string(&sub, name).unwrap(), Some("world".to_string()));
+        // remove → None; remover de novo é idempotente (sucesso)
+        registry::delete_value(&sub, name).unwrap();
+        assert_eq!(registry::read_string(&sub, name).unwrap(), None);
+        registry::delete_value(&sub, name).unwrap();
+    }
+
+    #[test]
+    fn registry_dword_write_read_delete() {
+        let sub = subkey("dword");
+        let name = "Num";
+        let _ = registry::delete_value(&sub, name);
+
+        assert_eq!(registry::read_u32(&sub, name).unwrap(), None);
+        registry::write_u32(&sub, name, 42).unwrap();
+        assert_eq!(registry::read_u32(&sub, name).unwrap(), Some(42));
+        registry::write_u32(&sub, name, 7).unwrap();
+        assert_eq!(registry::read_u32(&sub, name).unwrap(), Some(7));
+        registry::delete_value(&sub, name).unwrap();
+        assert_eq!(registry::read_u32(&sub, name).unwrap(), None);
+    }
+
+    #[test]
+    fn power_active_scheme_is_valid_and_settable_to_self() {
+        // Em ambientes sem powercfg disponível, não falha o suite.
+        let guid = match power::get_active_scheme() {
+            Ok(g) => g,
+            Err(_) => return,
+        };
+        assert_eq!(guid.len(), 36, "GUID do plano ativo deve ter 36 chars");
+        assert!(power::scheme_exists(&guid), "o plano ativo deve existir na lista");
+        // Trocar para o MESMO plano é seguro (no-op) e não exige elevação.
+        power::set_active_scheme(&guid).unwrap();
+        assert_eq!(power::get_active_scheme().unwrap(), guid, "plano permanece o mesmo");
+    }
+}

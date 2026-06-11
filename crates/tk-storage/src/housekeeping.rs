@@ -44,22 +44,21 @@ pub struct HousekeepingReport {
 /// Aplica a política de retenção e recupera espaço (`VACUUM`).
 pub async fn run(db: &Db, policy: &RetentionPolicy) -> Result<HousekeepingReport> {
     let now = now_ms();
-    let mut report = HousekeepingReport::default();
 
-    report.metrics_deleted = sqlx::query("DELETE FROM metric_samples WHERE ts < ?")
+    let metrics_deleted = sqlx::query("DELETE FROM metric_samples WHERE ts < ?")
         .bind(now - policy.metrics_days * DAY_MS)
         .execute(db)
         .await?
         .rows_affected();
 
-    report.audit_deleted = sqlx::query("DELETE FROM audit_log WHERE ts < ?")
+    let audit_deleted = sqlx::query("DELETE FROM audit_log WHERE ts < ?")
         .bind(now - policy.audit_days * DAY_MS)
         .execute(db)
         .await?
         .rows_affected();
 
     // findings/scores caem por ON DELETE CASCADE.
-    report.analysis_runs_deleted = sqlx::query("DELETE FROM analysis_runs WHERE started_at < ?")
+    let analysis_runs_deleted = sqlx::query("DELETE FROM analysis_runs WHERE started_at < ?")
         .bind(now - policy.analysis_days * DAY_MS)
         .execute(db)
         .await?
@@ -67,7 +66,7 @@ pub async fn run(db: &Db, policy: &RetentionPolicy) -> Result<HousekeepingReport
 
     // Mantém os N snapshots mais recentes; preserva os 'active' (reversões pendentes).
     // snapshot_entries caem por ON DELETE CASCADE.
-    report.snapshots_deleted = sqlx::query(
+    let snapshots_deleted = sqlx::query(
         "DELETE FROM snapshots WHERE status != 'active' AND id NOT IN \
          (SELECT id FROM snapshots ORDER BY ts DESC LIMIT ?)",
     )
@@ -79,5 +78,10 @@ pub async fn run(db: &Db, policy: &RetentionPolicy) -> Result<HousekeepingReport
     // Recupera espaço em disco (não pode rodar dentro de transação — aqui é autocommit).
     sqlx::query("VACUUM").execute(db).await?;
 
-    Ok(report)
+    Ok(HousekeepingReport {
+        metrics_deleted,
+        audit_deleted,
+        analysis_runs_deleted,
+        snapshots_deleted,
+    })
 }

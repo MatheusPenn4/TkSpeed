@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancela execuções antigas da mesma ref quando uma nova chega.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-test-lint:
+    # Windows: os crates de risco (registry/power) e os testes são cfg(windows);
+    # o WebView2 do Tauri também é nativo do Windows.
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust (stable + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache de build do Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      # ── Frontend: instala e builda (tsc + vite). Gera apps/desktop/dist. ──
+      - name: Frontend build
+        working-directory: apps/desktop
+        run: |
+          npm ci
+          npm run build
+
+      # ── Backend: build, testes e lint. ──
+      # tkspeed (binário Tauri) é excluído: exige dist/contexto do frontend + WebView
+      # no tempo de compilação, não tem testes e é validado pelo `tauri build` (A6).
+      - name: Cargo build
+        run: cargo build --workspace --exclude tkspeed
+
+      - name: Cargo test
+        run: cargo test --workspace --exclude tkspeed
+
+      - name: Cargo clippy (falha em qualquer warning)
+        run: cargo clippy --workspace --exclude tkspeed --all-targets -- -D warnings

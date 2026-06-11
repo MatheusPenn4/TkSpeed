@@ -94,17 +94,10 @@ impl Engine {
         let confidence = comp.confidence;
         let msg = comp.summary.clone();
 
-        let status = match decision {
-            OptDecision::Keep => "kept",
-            OptDecision::Revert => {
-                let _ = self.protection().rollback(snapshot_id).await;
-                "reverted"
-            }
-            OptDecision::Inconclusive => {
-                let _ = self.protection().rollback(snapshot_id).await;
-                "inconclusive"
-            }
-        };
+        let (status, do_rollback) = benchmark_outcome(decision);
+        if do_rollback {
+            let _ = self.protection().rollback(snapshot_id).await;
+        }
         self.finish(id, meta, snapshot_id, Some(before_id), Some(after_id), status, decision, Some(comp), confidence, &msg).await
     }
 
@@ -116,14 +109,16 @@ impl Engine {
         snapshot_id: i64,
         actions: &[ReversibleAction],
     ) -> Result<OptimizationRunInfo, String> {
-        match apply_actions(actions) {
+        let applied = apply_actions(actions);
+        let (status, decision) = space_freed_decision(applied.is_ok());
+        match applied {
             Ok(freed) => {
                 let mb = freed as f64 / 1_000_000.0;
-                self.finish(id, meta, snapshot_id, None, None, "kept", OptDecision::Keep, None, 100, &format!("Liberados {mb:.1} MB para a quarentena (reversível).")).await
+                self.finish(id, meta, snapshot_id, None, None, status, decision, None, 100, &format!("Liberados {mb:.1} MB para a quarentena (reversível).")).await
             }
             Err(e) => {
                 let _ = self.protection().rollback(snapshot_id).await;
-                self.finish(id, meta, snapshot_id, None, None, "failed", OptDecision::Inconclusive, None, 0, &format!("Falha na limpeza: {e}")).await
+                self.finish(id, meta, snapshot_id, None, None, status, decision, None, 0, &format!("Falha na limpeza: {e}")).await
             }
         }
     }
@@ -138,11 +133,13 @@ impl Engine {
     ) -> Result<OptimizationRunInfo, String> {
         if let Err(e) = apply_actions(actions) {
             let _ = self.protection().rollback(snapshot_id).await;
-            return self.finish(id, meta, snapshot_id, None, None, "failed", OptDecision::Inconclusive, None, 0, &format!("Falha ao aplicar: {e}")).await;
+            let (status, decision) = manual_decision(false);
+            return self.finish(id, meta, snapshot_id, None, None, status, decision, None, 0, &format!("Falha ao aplicar: {e}")).await;
         }
         let _ = verify_actions(actions);
+        let (status, decision) = manual_decision(true);
         self.finish(
-            id, meta, snapshot_id, None, None, "applied", OptDecision::Inconclusive, None, 0,
+            id, meta, snapshot_id, None, None, status, decision, None, 0,
             "Aplicado e reversível. Comprove com uma captura de FPS no jogo (antes/depois) para manter com evidência.",
         )
         .await
@@ -219,5 +216,132 @@ fn decide(comp: &PerfComparison) -> OptDecision {
         Some(PerfVerdict::Loss) => OptDecision::Revert,
         Some(PerfVerdict::NoChange) => OptDecision::Revert,
         _ => OptDecision::Inconclusive,
+    }
+}
+
+/// Caminho benchmark: mapeia a decisão para (status persistido, se deve reverter).
+/// Keep mantém; Revert e Inconclusive revertem o snapshot (sem evidência de ganho).
+fn benchmark_outcome(decision: OptDecision) -> (&'static str, bool) {
+    match decision {
+        OptDecision::Keep => ("kept", false),
+        OptDecision::Revert => ("reverted", true),
+        OptDecision::Inconclusive => ("inconclusive", true),
+    }
+}
+
+/// Política de limpeza (SpaceFreed): aplicação OK → mantém; falha → inconclusivo (revertido).
+fn space_freed_decision(applied_ok: bool) -> (&'static str, OptDecision) {
+    if applied_ok {
+        ("kept", OptDecision::Keep)
+    } else {
+        ("failed", OptDecision::Inconclusive)
+    }
+}
+
+/// Política do caminho manual: sempre inconclusivo (pende de evidência de FPS);
+/// aplicado fica reversível, falha é revertida.
+fn manual_decision(applied_ok: bool) -> (&'static str, OptDecision) {
+    if applied_ok {
+        ("applied", OptDecision::Inconclusive)
+    } else {
+        ("failed", OptDecision::Inconclusive)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tk_contracts::ComparisonRow;
+
+    fn row(metric: &str, verdict: PerfVerdict) -> ComparisonRow {
+        ComparisonRow {
+            metric: metric.into(),
+            before: 100.0,
+            after: 110.0,
+            delta_pct: 10.0,
+            margin_pct: 3.0,
+            verdict,
+            unit: "score".into(),
+        }
+    }
+
+    fn comp(reliable: bool, rows: Vec<ComparisonRow>) -> PerfComparison {
+        PerfComparison { before_id: 1, after_id: 2, rows, summary: String::new(), confidence: 80, reliable }
+    }
+
+    // ── decide(): mapeamento veredito → decisão (caminho benchmark) ──
+    #[test]
+    fn gain_keeps() {
+        assert_eq!(decide(&comp(true, vec![row("cpu_multi", PerfVerdict::Gain)])), OptDecision::Keep);
+    }
+
+    #[test]
+    fn loss_reverts() {
+        assert_eq!(decide(&comp(true, vec![row("cpu_multi", PerfVerdict::Loss)])), OptDecision::Revert);
+    }
+
+    #[test]
+    fn no_change_reverts() {
+        assert_eq!(decide(&comp(true, vec![row("cpu_multi", PerfVerdict::NoChange)])), OptDecision::Revert);
+    }
+
+    #[test]
+    fn unstable_is_inconclusive() {
+        assert_eq!(decide(&comp(true, vec![row("cpu_multi", PerfVerdict::Unstable)])), OptDecision::Inconclusive);
+    }
+
+    #[test]
+    fn unreliable_is_inconclusive_even_with_gain() {
+        // Sessão não confiável NUNCA declara ganho (anti-alegação-falsa).
+        assert_eq!(decide(&comp(false, vec![row("cpu_multi", PerfVerdict::Gain)])), OptDecision::Inconclusive);
+    }
+
+    #[test]
+    fn prefers_cpu_multi_as_primary_metric() {
+        let c = comp(true, vec![row("cpu_single", PerfVerdict::Loss), row("cpu_multi", PerfVerdict::Gain)]);
+        assert_eq!(decide(&c), OptDecision::Keep);
+    }
+
+    #[test]
+    fn empty_rows_is_inconclusive() {
+        assert_eq!(decide(&comp(true, vec![])), OptDecision::Inconclusive);
+    }
+
+    // ── benchmark_outcome(): decisão → (status, reverter?) ──
+    #[test]
+    fn keep_does_not_rollback() {
+        assert_eq!(benchmark_outcome(OptDecision::Keep), ("kept", false));
+    }
+
+    #[test]
+    fn revert_decision_rolls_back() {
+        assert_eq!(benchmark_outcome(OptDecision::Revert), ("reverted", true));
+    }
+
+    #[test]
+    fn inconclusive_decision_rolls_back() {
+        assert_eq!(benchmark_outcome(OptDecision::Inconclusive), ("inconclusive", true));
+    }
+
+    // ── SpaceFreed → Keep ── (e falha → Inconclusive)
+    #[test]
+    fn space_freed_ok_keeps() {
+        assert_eq!(space_freed_decision(true), ("kept", OptDecision::Keep));
+    }
+
+    #[test]
+    fn space_freed_err_is_inconclusive() {
+        assert_eq!(space_freed_decision(false), ("failed", OptDecision::Inconclusive));
+    }
+
+    // ── Manual → Inconclusive ──
+    #[test]
+    fn manual_applied_is_inconclusive() {
+        assert_eq!(manual_decision(true), ("applied", OptDecision::Inconclusive));
+    }
+
+    #[test]
+    fn manual_failed_is_inconclusive() {
+        assert_eq!(manual_decision(false), ("failed", OptDecision::Inconclusive));
     }
 }

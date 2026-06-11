@@ -4,8 +4,10 @@ import { AppShell } from "./app/shell/AppShell";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { PerformanceLabPage } from "./features/perflab/PerformanceLabPage";
 import { OptimizationCenterPage } from "./features/optimize/OptimizationCenterPage";
+import { RollbackCenterPage } from "./features/rollback/RollbackCenterPage";
 import { Placeholder } from "./app/shell/Placeholder";
 import { ErrorBoundary, FatalErrorView } from "./shared/components/ErrorBoundary";
+import { ToastProvider } from "./shared/components/Toast";
 import { invokeCmd, isTauri } from "./shared/lib/tauri";
 
 /**
@@ -39,28 +41,30 @@ export function App() {
 
   return (
     <ErrorBoundary>
-      <HashRouter>
-        <AppShell>
-          {bootError ? (
-            <FatalErrorView title="Falha ao iniciar o TkSpeed" message={bootError} />
-          ) : (
-            <Routes>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/analysis" element={<Placeholder title="Análise Completa" />} />
-              <Route path="/monitoring" element={<Placeholder title="Monitoramento" />} />
-              <Route path="/gameboost" element={<Placeholder title="Game Boost" />} />
-              <Route path="/benchmark" element={<PerformanceLabPage />} />
-              <Route path="/optimize" element={<OptimizationCenterPage />} />
-              <Route path="/history" element={<Placeholder title="Histórico · Digital Twin" />} />
-              <Route path="/reports" element={<Placeholder title="Relatórios" />} />
-              <Route path="/diagnostics" element={<Placeholder title="Central de Diagnóstico" />} />
-              <Route path="/rollback" element={<Placeholder title="Rollback" />} />
-              <Route path="/settings" element={<Placeholder title="Configurações" />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          )}
-        </AppShell>
-      </HashRouter>
+      <ToastProvider>
+        <HashRouter>
+          <AppShell>
+            {bootError ? (
+              <FatalErrorView title="Falha ao iniciar o TkSpeed" message={bootError} />
+            ) : (
+              <Routes>
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/analysis" element={<Placeholder title="Análise Completa" />} />
+                <Route path="/monitoring" element={<Placeholder title="Monitoramento" />} />
+                <Route path="/gameboost" element={<Placeholder title="Game Boost" />} />
+                <Route path="/benchmark" element={<PerformanceLabPage />} />
+                <Route path="/optimize" element={<OptimizationCenterPage />} />
+                <Route path="/history" element={<Placeholder title="Histórico · Digital Twin" />} />
+                <Route path="/reports" element={<Placeholder title="Relatórios" />} />
+                <Route path="/diagnostics" element={<Placeholder title="Central de Diagnóstico" />} />
+                <Route path="/rollback" element={<RollbackCenterPage />} />
+                <Route path="/settings" element={<Placeholder title="Configurações" />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            )}
+          </AppShell>
+        </HashRouter>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }

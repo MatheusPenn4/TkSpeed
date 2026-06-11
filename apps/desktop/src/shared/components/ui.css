@@ -1,0 +1,87 @@
+/* ───────────────────────── TkSpeed Design System V2 — primitivos ─────────────────────────
+   Badge · Modal · Toast · EmptyState · Icon. Referência visual para o resto do sistema. */
+
+/* ── Badge (pílula única) ── */
+.v2-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
+  padding: 3px 10px; border-radius: var(--r-full);
+  border: 1px solid var(--stroke-strong); white-space: nowrap;
+}
+.v2-badge-success { color: var(--success-ink); border-color: rgba(52, 211, 153, 0.5); background: rgba(52, 211, 153, 0.08); }
+.v2-badge-warning { color: var(--warning); border-color: rgba(255, 200, 87, 0.5); background: rgba(255, 200, 87, 0.08); }
+.v2-badge-danger  { color: var(--danger); border-color: rgba(255, 77, 77, 0.5); background: rgba(255, 77, 77, 0.08); }
+.v2-badge-info    { color: var(--primary); border-color: rgba(0, 229, 255, 0.5); background: rgba(0, 229, 255, 0.08); }
+.v2-badge-neutral { color: var(--text-mid); }
+
+/* ── Modal (camada flutuante de vidro) ── */
+.v2-modal-overlay {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  background: rgba(5, 7, 12, 0.62);
+  display: grid; place-items: center; padding: var(--s-4);
+  animation: v2-fade var(--t-fast) var(--ease);
+}
+.v2-modal {
+  width: 100%; max-width: 480px;
+  border-radius: var(--r-xl);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+  animation: v2-rise var(--t-base) var(--ease);
+}
+.v2-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--s-4) var(--s-6); border-bottom: 1px solid var(--stroke);
+}
+.v2-modal-head h2 { font: var(--t-h2); }
+.v2-modal-close {
+  border: 0; background: transparent; color: var(--text-mid); cursor: pointer;
+  display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-sm);
+  transition: all var(--t-fast) var(--ease);
+}
+.v2-modal-close:hover { background: var(--bg-glass-strong); color: var(--text-hi); }
+.v2-modal-body { padding: var(--s-6); color: var(--text-mid); font-size: 14px; line-height: 1.55; }
+.v2-modal-body strong { color: var(--text-hi); }
+.v2-modal-foot {
+  display: flex; justify-content: flex-end; gap: var(--s-2);
+  padding: var(--s-4) var(--s-6); border-top: 1px solid var(--stroke);
+}
+
+/* ── Toast (feedback global) ── */
+.v2-toast-wrap {
+  position: fixed; right: var(--s-6); bottom: var(--s-6); z-index: var(--z-toast);
+  display: flex; flex-direction: column; gap: var(--s-2); pointer-events: none;
+}
+.v2-toast {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-3) var(--s-4); border-radius: var(--r-md);
+  background: var(--bg-elevated); box-shadow: var(--shadow-md);
+  font-size: 13px; color: var(--text-hi); max-width: 380px;
+  border-left: 3px solid var(--stroke-strong);
+  animation: v2-rise var(--t-base) var(--ease);
+}
+.v2-toast-success { border-left-color: var(--success-ink); }
+.v2-toast-success svg { color: var(--success-ink); }
+.v2-toast-danger { border-left-color: var(--danger); }
+.v2-toast-danger svg { color: var(--danger); }
+.v2-toast-info { border-left-color: var(--primary); }
+.v2-toast-info svg { color: var(--primary); }
+
+/* ── EmptyState ── */
+.v2-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: var(--s-2); padding: var(--s-12) var(--s-6);
+}
+.v2-empty-ico {
+  width: 64px; height: 64px; border-radius: var(--r-full);
+  display: grid; place-items: center; margin-bottom: var(--s-2);
+  background: var(--bg-glass); color: var(--text-low);
+  border: 1px solid var(--stroke);
+}
+.v2-empty-title { font: var(--t-h2); color: var(--text-hi); }
+.v2-empty-desc { font-size: 13px; color: var(--text-mid); max-width: 380px; line-height: 1.55; }
+.v2-empty-action { margin-top: var(--s-3); }
+.v2-empty-ok .v2-empty-ico { color: var(--success-ink); border-color: rgba(52, 211, 153, 0.4); }
+.v2-empty-ok .v2-empty-title { color: var(--success-ink); }
+
+@keyframes v2-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes v2-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

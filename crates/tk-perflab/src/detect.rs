@@ -34,14 +34,14 @@ pub fn classify(
             BottleneckKind::Gpu,
             format!("GPU saturada ({g:.0}%) com CPU folgada — limitado pela GPU."),
         ),
-        _ if cpu_avg >= 85.0 && gpu_avg.map_or(true, |g| g < 80.0) => (
+        _ if cpu_avg >= 85.0 && gpu_avg.is_none_or(|g| g < 80.0) => (
             BottleneckKind::Cpu,
             format!("CPU saturada ({cpu_avg:.0}%) — limitado pela CPU."),
         ),
         _ if ram_avg >= 90.0 => {
             (BottleneckKind::Ram, format!("Memória sob pressão ({ram_avg:.0}%)."))
         }
-        _ if cpu_avg < 25.0 && gpu_avg.map_or(true, |g| g < 25.0) => (
+        _ if cpu_avg < 25.0 && gpu_avg.is_none_or(|g| g < 25.0) => (
             BottleneckKind::Balanced,
             "Sistema ocioso — execute sob carga (jogo/render) para um diagnóstico real.".into(),
         ),
