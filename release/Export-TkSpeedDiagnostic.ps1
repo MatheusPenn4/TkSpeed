@@ -1,4 +1,4 @@
-# TkSpeed — Exportar Diagnóstico (Alpha)
+﻿# TkSpeed — Exportar Diagnóstico (Alpha)
 # Gera TkSpeed-Diagnostic.zip na Área de Trabalho com banco, logs e info do sistema.
 # NÃO altera o TkSpeed. Uso: clique direito > "Executar com PowerShell".
 # Para suporte remoto: envie o .zip gerado ao time TkSpeed.

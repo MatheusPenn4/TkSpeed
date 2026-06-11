@@ -25,6 +25,16 @@ COMO INSTALAR
 4. Abra o TkSpeed pelo atalho criado.
 
 --------------------------------------------------
+INTEGRIDADE (SHA256)
+--------------------------------------------------
+Confira que o instalador não foi corrompido/alterado. No PowerShell:
+
+   Get-FileHash .\TkSpeed_0.1.0_x64-setup.exe -Algorithm SHA256
+
+Compare o resultado com a linha correspondente em SHA256SUMS.txt (incluído
+neste pacote). Os valores devem ser idênticos.
+
+--------------------------------------------------
 O QUE TESTAR
 --------------------------------------------------
 - Dashboard: veja CPU/RAM/Disco em tempo real e o hardware detectado.
