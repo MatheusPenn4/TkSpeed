@@ -222,6 +222,31 @@ pub mod power {
     pub use imp::{get_active_scheme, scheme_exists, set_active_scheme};
 }
 
+/// Detecção de elevação (privilégios de administrador).
+/// Usado pelo CapabilityMatrix para expor `admin_privileges`.
+pub mod elevation {
+    /// Retorna true se o processo atual está rodando com privilégios de administrador.
+    ///
+    /// Implementação: tenta abrir HKLM com acesso de escrita (KEY_WRITE). Somente
+    /// processos elevados conseguem — é uma verificação não-destrutiva, sem gravação.
+    #[cfg(windows)]
+    pub fn is_elevated() -> bool {
+        use winreg::enums::*;
+        use winreg::RegKey;
+        RegKey::predef(HKEY_LOCAL_MACHINE)
+            .open_subkey_with_flags(
+                "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion",
+                KEY_WRITE,
+            )
+            .is_ok()
+    }
+
+    #[cfg(not(windows))]
+    pub fn is_elevated() -> bool {
+        false
+    }
+}
+
 // Placeholders para fases futuras.
 pub mod services {}
 pub mod process {}

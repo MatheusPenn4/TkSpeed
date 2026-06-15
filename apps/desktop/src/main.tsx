@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
 import "./styles/tokens.css";
 import "./styles/global.css";
-import "./shared/components/ui.css";
 // Design System V3 "Apex" — fontes Geist self-hosted (offline) + tokens.
 import "@fontsource/geist-sans/latin-400.css";
 import "@fontsource/geist-sans/latin-500.css";

@@ -1,36 +1,63 @@
-.optimize { display: flex; flex-direction: column; gap: var(--s-6); max-width: 1100px; margin: 0 auto; }
-.optimize .panel { padding: var(--s-6); }
+/* Central de Otimizações — V3 Apex. Tokens Quantum Mint. */
+.optimize { display: flex; flex-direction: column; gap: 20px; max-width: var(--ax-content-max); margin: 0 auto; }
+.opt-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.opt-head h1 { font: 600 22px/1.2 var(--ax-font-display); color: var(--ink-hi); }
+.opt-head p { font-size: 13px; color: var(--ink-mid); margin-top: 4px; }
+.opt-section-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  font: 600 11px/1 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--ink-low); padding-bottom: 14px; border-bottom: 1px solid var(--hairline); margin-bottom: 16px;
+}
+.opt-banner {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+  border-radius: var(--ax-r-md); background: var(--panel); border-left: 3px solid var(--warn);
+  color: var(--ink-mid); font-size: 13px;
+}
+.opt-banner-risk { border-left-color: var(--risk); }
 
-.opt-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-4); }
-@media (max-width: 900px) { .opt-list { grid-template-columns: 1fr; } }
-.opt-card { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-2); }
-.opt-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
-.opt-desc { font-size: 13px; color: var(--text-mid); }
-.opt-impact { font-size: 12px; color: var(--text-low); }
-.opt-card .btn { margin-top: var(--s-2); }
+.num  { font-family: var(--ax-font-data); font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--ax-font-data); font-size: 12px; }
 
-.risk { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: var(--r-full); border: 1px solid var(--stroke-strong); }
-.risk.ok { color: var(--success); border-color: var(--success); }
-.risk.warn { color: var(--warning); border-color: var(--warning); }
-.risk.err { color: var(--danger); border-color: var(--danger); }
-.risk.neutral { color: var(--text-low); }
+/* Last run result */
+.opt-result-name { font: 600 15px/1.3 var(--ax-font-ui); color: var(--ink-hi); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.opt-msg { font-size: 13px; color: var(--ink-mid); margin-top: 10px; line-height: 1.5; }
+.opt-evi { font-size: 12px; color: var(--ink-low); font-family: var(--ax-font-data); margin-top: 8px; }
 
-.opt-decision { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: var(--r-full); border: 1px solid var(--stroke-strong); }
-.opt-decision.ok { color: var(--success); border-color: var(--success); }
-.opt-decision.warn { color: var(--warning); border-color: var(--warning); }
-.opt-decision.neutral { color: var(--text-low); }
+/* Catalog */
+.opt-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.opt-card {
+  padding: 16px; border-radius: var(--ax-r-md); background: var(--panel);
+  border: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 8px;
+}
+.opt-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.opt-card-head strong { font: 600 14px/1.3 var(--ax-font-ui); color: var(--ink-hi); }
+.opt-desc   { font-size: 13px; color: var(--ink-mid); line-height: 1.5; }
+.opt-impact { font-size: 12px; color: var(--ink-low); }
 
-.opt-msg { font-size: 14px; color: var(--text-mid); margin-top: var(--s-2); }
-.opt-evi { font-size: 12px; color: var(--text-low); margin-top: 4px; }
+/* Startup list */
+.startup-list { list-style: none; padding: 0; margin: 0; }
+.startup-item {
+  display: grid; grid-template-columns: 1fr auto auto auto;
+  align-items: center; gap: 12px; padding: 12px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+.startup-item:last-child { border-bottom: 0; }
+.su-name { font: 500 14px/1 var(--ax-font-ui); color: var(--ink-hi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.su-loc  { font: 600 11px/1 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1px; color: var(--ink-low); }
+.su-cmd  { font-size: 11px; color: var(--ink-faint); font-family: var(--ax-font-data); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
 
-.opt-history { display: flex; flex-direction: column; gap: var(--s-3); }
-.opt-hist-item { padding: var(--s-3); border-radius: var(--r-md); background: var(--bg-glass); display: flex; flex-direction: column; gap: 2px; }
-.ohi-main { display: flex; align-items: center; gap: var(--s-3); }
-.ohi-status { font-size: 11px; color: var(--text-low); text-transform: uppercase; letter-spacing: 1px; }
-.opt-hist-item .btn { align-self: flex-start; margin-top: var(--s-2); }
+/* Startup link card */
+.opt-startup-link {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.opt-startup-link-text { display: flex; flex-direction: column; gap: 4px; }
+.opt-startup-link-text strong { font: 600 14px/1.3 var(--ax-font-ui); color: var(--ink-hi); }
+.opt-startup-link-text p { font-size: 13px; color: var(--ink-mid); margin: 0; }
 
-.startup-list { display: flex; flex-direction: column; gap: var(--s-1); }
-.startup-item { display: grid; grid-template-columns: 1fr auto 2fr auto; gap: var(--s-3); align-items: center; padding: var(--s-2) var(--s-3); border-radius: var(--r-sm); background: var(--bg-glass); font-size: 13px; }
-.su-name { font-weight: 600; }
-.su-loc { font-size: 11px; color: var(--text-low); }
-.su-cmd { font-size: 11px; color: var(--text-mid); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Optimization history */
+.opt-history { list-style: none; padding: 0; margin: 0; }
+.opt-hist-item { padding: 14px 0; border-bottom: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 6px; }
+.opt-hist-item:last-child { border-bottom: 0; }
+.ohi-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ohi-main strong { font: 600 14px/1 var(--ax-font-ui); color: var(--ink-hi); }
+.ohi-status { font-size: 12px; color: var(--ink-low); margin-left: auto; }

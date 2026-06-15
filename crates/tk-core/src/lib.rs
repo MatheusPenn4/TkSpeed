@@ -61,6 +61,11 @@ impl AppContext {
         tk_optimize::Engine::new(self.db.clone())
     }
 
+    /// Fingerprint SHA-256 desta máquina (cacheado via OnceLock, detectado 1× por processo).
+    pub fn machine_fingerprint(&self) -> String {
+        tk_optimize::machine::fingerprint()
+    }
+
     // ── Janela de telemetria (alimentada pelo loop de monitoramento) ──
     pub fn push_tick(&self, tick: MetricsTick) {
         let mut w = self.window.lock().unwrap_or_else(|e| e.into_inner());

@@ -14,6 +14,12 @@ use tk_contracts::{
 };
 use tk_core::AppContext;
 use tk_monitor::SysinfoSampler;
+use tk_optimize::{
+    profiles::{executor::{build_action, ConfigAction}, evidence::ProfileEvidenceRepo, repo::ProfileRepo},
+    recommendations::{Recommendation, RecommendationContext, RecommendationEngine},
+    MeasurementPipeline, ProfileMeasureResult,
+};
+use tk_storage::session_source;
 
 /// Erro serializável para o frontend. NUNCA carrega SQL, paths, stack traces ou
 /// exceções técnicas — apenas `code` (programático) e `message` (amigável).
@@ -190,7 +196,8 @@ pub async fn perf_run_benchmark(
             AppError { code: "perf".into(), message: "Falha ao executar o benchmark.".into() }
         })?;
 
-    let id = ctx.perf().save_session(&label, &result).await?;
+    let fp = ctx.machine_fingerprint();
+    let id = ctx.perf().save_session(&label, &result, Some(&fp), session_source::MANUAL).await?;
     tracing::info!("benchmark salvo (session={id}, kind={kind}, runs={n}, label={label})");
     Ok(session_info(id, &label, result))
 }
@@ -277,6 +284,16 @@ pub async fn opt_disable_startup(state: State<'_, AppContext>, name: String) -> 
         .disable_startup(&name)
         .await
         .map_err(|m| AppError { code: "optimize".into(), message: m })
+}
+
+/// Estado REAL dos módulos do TkSpeed. Estrutura aberta — novas capacidades
+/// em V4.3/V4.4 não requerem mudança neste comando.
+#[tauri::command]
+pub async fn system_capabilities() -> Cmd<Vec<tk_optimize::capabilities::Capability>> {
+    let caps = tokio::task::spawn_blocking(tk_optimize::capabilities::build)
+        .await
+        .map_err(|e| AppError { code: "capabilities".into(), message: format!("falha ao ler capacidades: {e}") })?;
+    Ok(caps)
 }
 
 /// Detecta o gargalo atual amostrando ~2s (CPU/GPU/RAM).
@@ -368,8 +385,85 @@ pub async fn perf_capture_fps(
     .map_err(|e| AppError { code: "perf".into(), message: format!("Tarefa de captura falhou: {e}") })?
     .map_err(|m| AppError { code: "perf_capture".into(), message: m })?;
 
-    let id = ctx.perf().save_session(&label, &result).await?;
+    let fp = ctx.machine_fingerprint();
+    let id = ctx.perf().save_session(&label, &result, Some(&fp), session_source::MANUAL).await?;
     Ok(session_info(id, &label, result))
+}
+
+/// Retorna as top-5 recomendações do Recommendation Engine para esta máquina.
+/// Usa evidência real, capacidades detectadas e histórico de benchmarks.
+/// Sem heurísticas inventadas — só dados reais.
+#[tauri::command]
+pub async fn advisor_recommendations(state: State<'_, AppContext>) -> Cmd<Vec<Recommendation>> {
+    let ctx = state.inner().clone();
+    let fp = ctx.machine_fingerprint();
+
+    // Capacidades do sistema detectadas em runtime.
+    let capabilities = tk_optimize::capabilities::build();
+
+    // Sessões de benchmark recentes (até 10) para contexto.
+    let recent_sessions = ctx.perf().list_sessions(10).await.unwrap_or_default();
+
+    // Perfil atualmente ativo.
+    let active_profile = ProfileRepo::new(ctx.db.clone())
+        .get_state("default")
+        .await
+        .ok()
+        .and_then(|s| s.profile_id);
+
+    // Evidência de config acumulada nesta máquina.
+    let config_evidence = tk_optimize::EvidenceRepo::new(ctx.db.clone())
+        .evidence_for_fingerprint(&fp)
+        .await
+        .unwrap_or_default();
+
+    // Evidência de perfil acumulada nesta máquina.
+    let profile_evidence = ProfileEvidenceRepo::new(ctx.db.clone())
+        .list_by_fingerprint(&fp)
+        .await
+        .unwrap_or_default();
+
+    // Configs executáveis nesta máquina (pode chamar powercfg — usa spawn_blocking).
+    let applicable_config_ids: Vec<String> = tokio::task::spawn_blocking(|| {
+        tk_optimize::ConfigRegistry::new()
+            .all()
+            .iter()
+            .filter(|c| matches!(build_action(c.meta().id), Ok(ConfigAction::Executable(_))))
+            .map(|c| c.meta().id.to_string())
+            .collect()
+    })
+    .await
+    .map_err(|e| AppError { code: "advisor".into(), message: format!("Falha ao verificar configs: {e}") })?;
+
+    let rec_ctx = RecommendationContext {
+        machine_fingerprint: fp,
+        capabilities,
+        recent_sessions,
+        active_profile,
+        active_config_ids: vec![], // expandir quando pipeline de config individual estiver pronto
+        config_evidence,
+        profile_evidence,
+        applicable_config_ids,
+    };
+
+    Ok(RecommendationEngine::top_n(&rec_ctx, 5))
+}
+
+/// Aplica um perfil via MeasurementPipeline completo (before bench → ativar → after bench → evidência).
+/// Para recomendações de perfil. Operação longa — frontend deve mostrar estado de carregamento.
+#[tauri::command]
+pub async fn advisor_apply_profile(
+    state: State<'_, AppContext>,
+    profile_id: String,
+) -> Cmd<ProfileMeasureResult> {
+    let ctx = state.inner().clone();
+    MeasurementPipeline::new(ctx.db.clone())
+        .activate_with_measure(&profile_id)
+        .await
+        .map_err(|e| {
+            tracing::error!("advisor_apply_profile falhou: {e}");
+            AppError { code: "advisor_apply".into(), message: e }
+        })
 }
 
 /// Demonstra o pipeline de FPS com um trace SINTÉTICO (não é medição real).
@@ -386,6 +480,7 @@ pub async fn perf_capture_fps_demo(state: State<'_, AppContext>) -> Cmd<Benchmar
     .map_err(|e| AppError { code: "perf".into(), message: format!("Tarefa falhou: {e}") })?
     .map_err(|m| AppError { code: "perf_capture".into(), message: m })?;
 
-    let id = ctx.perf().save_session(&label, &result).await?;
+    let fp = ctx.machine_fingerprint();
+    let id = ctx.perf().save_session(&label, &result, Some(&fp), session_source::MANUAL).await?;
     Ok(session_info(id, &label, result))
 }

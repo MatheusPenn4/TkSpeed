@@ -196,11 +196,17 @@ impl ProtectionService {
     }
 
     /// Cria um snapshot a partir de um conjunto de ações reversíveis (genérico).
-    /// Usado pelo TkOptimization Engine antes de aplicar uma otimização.
-    pub async fn create_snapshot(&self, reason: &str, actions: &[ReversibleAction]) -> Result<i64> {
+    /// `machine_fingerprint`: hash da máquina (V4 Evidence Engine). Passar `None` em
+    /// contextos sem acesso ao módulo machine (testes, demo interno).
+    pub async fn create_snapshot(
+        &self,
+        reason: &str,
+        actions: &[ReversibleAction],
+        machine_fingerprint: Option<&str>,
+    ) -> Result<i64> {
         let entries: Vec<SnapshotEntryRow> = actions.iter().map(action_to_entry).collect();
         let hash = integrity(&entries);
-        let snap_id = self.snapshots().create(reason, &hash).await?;
+        let snap_id = self.snapshots().create(reason, &hash, machine_fingerprint).await?;
         for e in &entries {
             self.snapshots().add_entry(snap_id, e).await?;
         }
@@ -226,7 +232,7 @@ impl ProtectionService {
 
         // 1) snapshot (estado original)
         let reason = format!("Demo reversível: {PILOT_NAME} → {PILOT_NEW}");
-        let snap_id = self.snapshots().create(&reason, &hash).await?;
+        let snap_id = self.snapshots().create(&reason, &hash, None).await?;
         self.snapshots().add_entry(snap_id, &entry).await?;
         self.audit()
             .log("system", "snapshot.created", &format!("{{\"snapshot\":{snap_id},\"target\":\"{TARGET_LABEL}\"}}"))
@@ -523,7 +529,7 @@ mod tests {
         let svc = ProtectionService::new(db);
 
         // snapshot → apply: arquivo vai para a quarentena; freed == tamanho
-        let snap_id = svc.create_snapshot("cleanup", std::slice::from_ref(&action)).await.unwrap();
+        let snap_id = svc.create_snapshot("cleanup", std::slice::from_ref(&action), None).await.unwrap();
         let freed = apply_actions(std::slice::from_ref(&action)).unwrap();
         assert_eq!(freed, size, "bytes liberados == tamanho do arquivo");
         assert!(!original.exists(), "original foi movido");
@@ -640,7 +646,7 @@ mod tests {
         };
 
         // snapshot (estado original) → apply → verify
-        let snap_id = svc.create_snapshot("integration", std::slice::from_ref(&action)).await.unwrap();
+        let snap_id = svc.create_snapshot("integration", std::slice::from_ref(&action), None).await.unwrap();
         apply_actions(std::slice::from_ref(&action)).unwrap();
         assert_eq!(registry::read_string(&sub, name).unwrap(), Some("999".to_string()), "valor aplicado");
 

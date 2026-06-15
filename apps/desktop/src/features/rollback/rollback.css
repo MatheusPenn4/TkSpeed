@@ -1,72 +1,67 @@
-/* Rollback Center — primeira tela 100% V2 (referência visual do sistema). */
-.rbc { display: flex; flex-direction: column; gap: var(--s-6); max-width: var(--content-max); margin: 0 auto; }
+/* Central de Restauração — V3 Apex. Tokens Quantum Mint. */
+.rbc { display: flex; flex-direction: column; gap: 20px; max-width: var(--ax-content-max); margin: 0 auto; }
+.rbc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.rbc-head h1 { font: 600 22px/1.2 var(--ax-font-display); color: var(--ink-hi); }
+.rbc-head p { font-size: 13px; color: var(--ink-mid); margin-top: 4px; max-width: 560px; }
+.rbc-stats { display: flex; gap: 20px; }
+.rbc-stat { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.rbc-stat-k { font: 600 11px/1 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1px; color: var(--ink-low); }
+.rbc-stat strong { font: 600 28px/1 var(--ax-font-data); font-variant-numeric: tabular-nums; color: var(--ink-hi); }
 
-.rbc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-6); }
-.rbc-head h1 { font: var(--t-h1); }
-.rbc-head p { color: var(--text-mid); margin-top: 4px; font-size: 14px; max-width: 560px; }
-
-.rbc-stats { display: flex; gap: var(--s-3); }
-.rbc-stat {
-  display: flex; flex-direction: column; gap: 2px; align-items: flex-end;
-  padding: var(--s-3) var(--s-4); border-radius: var(--r-md);
-  background: var(--bg-raised); border: 1px solid var(--stroke); min-width: 96px;
+.rbc-banner {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+  border-radius: var(--ax-r-md); background: var(--panel); border-left: 3px solid var(--ion);
+  color: var(--ink-mid); font-size: 13px;
 }
-.rbc-stat-k { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-low); }
-.rbc-stat strong { font: var(--t-metric); font-size: 24px; }
 
-.rbc-panel { padding: var(--s-3) var(--s-4); }
-.banner { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-3) var(--s-4);
-  border-left: 3px solid var(--warning); color: var(--text-mid); font-size: 13px; border-radius: 0; }
+/* Skeleton */
+.rbc-skeleton { display: flex; flex-direction: column; gap: 10px; }
+.rbc-skel-row { height: 48px; border-radius: var(--ax-r-md); background: var(--panel); animation: ax-shimmer 1.4s ease-in-out infinite; }
+.rbc-skel-row:nth-child(2) { animation-delay: .15s; }
+.rbc-skel-row:nth-child(3) { animation-delay: .3s; }
 
-/* ── Tabela ── */
-.rbc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+/* Table */
+.rbc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .rbc-table thead th {
-  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
-  color: var(--text-low); font-weight: 700; padding: var(--s-3); border-bottom: 1px solid var(--stroke);
+  font: 600 11px/1 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1px;
+  color: var(--ink-low); text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--hairline-strong);
 }
-.rbc-col-action { text-align: right; }
-.rbc-row { cursor: pointer; transition: background var(--t-fast) var(--ease); }
-.rbc-row > td { padding: var(--s-3); border-bottom: 1px solid var(--stroke); vertical-align: middle; }
-.rbc-row:hover { background: var(--bg-glass); }
-.rbc-row.open { background: var(--bg-glass-strong); }
-.rbc-row.open > td { border-bottom: 0; }
-.rbc-chev { width: 28px; color: var(--text-low); }
-.rbc-when { color: var(--text-mid); font-size: 12px; white-space: nowrap; }
-.rbc-target { color: var(--text-hi); font-weight: 500; }
-.rbc-noaction { color: var(--text-low); }
+.rbc-col-action { text-align: right; min-width: 110px; }
+.rbc-row { cursor: pointer; transition: background var(--ax-t-instant); }
+.rbc-row:hover { background: rgba(255,255,255,.025); }
+.rbc-row.open  { background: rgba(255,255,255,.025); }
+.rbc-row > td { padding: 12px; border-bottom: 1px solid var(--hairline); color: var(--ink-hi); vertical-align: middle; }
+.rbc-chev   { width: 28px; color: var(--ink-low); }
+.rbc-when   { color: var(--ink-mid); font-family: var(--ax-font-data); font-size: 12px; white-space: nowrap; }
+.rbc-target { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rbc-noaction { color: var(--ink-faint); }
+.rbc-detail-row > td { padding: 0; border-bottom: 1px solid var(--hairline); background: var(--panel); }
 
-.rbc-row .btn.sm { display: inline-flex; align-items: center; gap: 6px; }
+/* Evidence panel */
+.rbc-evi { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+.rbc-evi-kv { display: flex; gap: 12px; align-items: baseline; }
+.rbc-evi-kv > span { font: 600 11px/1.4 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1px; color: var(--ink-low); min-width: 80px; flex-shrink: 0; }
+.rbc-evi-kv strong { font-size: 13px; color: var(--ink-hi); }
+.rbc-evi-kv.full { flex-direction: column; }
+.rbc-evi-kv.full strong { font-family: var(--ax-font-data); font-size: 12px; word-break: break-all; color: var(--ink-mid); }
+.rbc-evi-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rbc-evi-line > span { font-size: 13px; color: var(--ink-mid); }
+.rbc-evi-line strong { color: var(--ink-hi); }
+.rbc-evi-bench { font: 400 12px/1 var(--ax-font-data); color: var(--ink-low); }
+.rbc-evi-msg { font-size: 13px; color: var(--ink-mid); line-height: 1.5; }
 
-/* ── Detalhe / evidência ── */
-.rbc-detail-row > td { padding: 0 var(--s-3) var(--s-4); border-bottom: 1px solid var(--stroke); }
-.rbc-evi {
-  background: var(--bg-sunken); border: 1px solid var(--stroke); border-radius: var(--r-md);
-  padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3);
+/* Comparison table (inside evidence) */
+.rbc-cmp { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+.rbc-cmp th {
+  font: 600 11px/1 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1px;
+  color: var(--ink-low); padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--hairline);
 }
-.rbc-evi-kv { display: inline-flex; flex-direction: column; gap: 2px; margin-right: var(--s-6); }
-.rbc-evi-kv span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-low); }
-.rbc-evi-kv strong { font-size: 14px; color: var(--text-hi); }
-.rbc-evi-kv.full { display: flex; width: 100%; }
-.rbc-evi-kv.full strong { word-break: break-all; color: var(--text-mid); font-size: 12px; }
+.rbc-cmp th.num, .rbc-cmp td.num { text-align: right; font-family: var(--ax-font-data); }
+.rbc-cmp td { padding: 8px 10px; color: var(--ink-hi); border-bottom: 1px solid var(--hairline); }
+.rbc-cmp tr:last-child td { border-bottom: 0; }
 
-.rbc-evi-line { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; font-size: 13px; color: var(--text-mid); }
-.rbc-evi-bench { color: var(--text-low); font-size: 12px; }
-.rbc-evi-msg { font-size: 13px; color: var(--text-mid); line-height: 1.5; }
-
-.rbc-cmp { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: var(--s-2); }
-.rbc-cmp th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
-  color: var(--text-low); padding: var(--s-2) var(--s-3); }
-.rbc-cmp td { padding: var(--s-2) var(--s-3); border-top: 1px solid var(--stroke); color: var(--text-hi); }
-.rbc-cmp .num { text-align: right; font-family: var(--font-display); font-variant-numeric: tabular-nums; }
-.rbc-cmp .num small { color: var(--text-low); font-weight: 400; }
-
-/* ── Skeleton (loading) ── */
-.rbc-skeleton { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-3); }
-.rbc-skel-row { height: 44px; border-radius: var(--r-md); background: var(--bg-glass);
-  animation: rbc-shimmer 1.4s ease-in-out infinite; }
-.rbc-skel-row:nth-child(2) { animation-delay: 0.15s; }
-.rbc-skel-row:nth-child(3) { animation-delay: 0.3s; }
-@keyframes rbc-shimmer { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+.num  { font-family: var(--ax-font-data); font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--ax-font-data); font-size: 12px; }
 
 @media (max-width: 1080px) {
   .rbc-head { flex-direction: column; }

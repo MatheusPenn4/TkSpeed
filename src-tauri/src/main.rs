@@ -57,12 +57,15 @@ fn main() {
             bridge::perf_capture_fps_demo,
             bridge::perf_hardware_snapshot,
             bridge::perf_detect_bottleneck,
+            bridge::system_capabilities,
             bridge::opt_catalog,
             bridge::opt_run,
             bridge::opt_history,
             bridge::opt_rollback,
             bridge::opt_startup_analysis,
             bridge::opt_disable_startup,
+            bridge::advisor_recommendations,
+            bridge::advisor_apply_profile,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o TkSpeed");

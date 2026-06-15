@@ -11,7 +11,7 @@ export function BrandHeader({ symbolSize = 26, compact = false }: { symbolSize?:
       {!compact && (
         <div className="ax-brand-text">
           <b>TkSpeed</b>
-          <span>Performance Engineering</span>
+          <span>Engenharia de Performance</span>
         </div>
       )}
     </div>

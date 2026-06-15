@@ -261,13 +261,20 @@ impl SnapshotRepo {
         Self { db }
     }
 
-    pub async fn create(&self, reason: &str, integrity_hash: &str) -> Result<i64> {
+    pub async fn create(
+        &self,
+        reason: &str,
+        integrity_hash: &str,
+        machine_fingerprint: Option<&str>,
+    ) -> Result<i64> {
         let id = sqlx::query(
-            "INSERT INTO snapshots (ts, reason, integrity_hash, status) VALUES (?, ?, ?, 'active')",
+            "INSERT INTO snapshots (ts, reason, integrity_hash, status, machine_fingerprint) \
+             VALUES (?, ?, ?, 'active', ?)",
         )
         .bind(now_ms())
         .bind(reason)
         .bind(integrity_hash)
+        .bind(machine_fingerprint)
         .execute(&self.db)
         .await?
         .last_insert_rowid();
@@ -406,11 +413,17 @@ impl PerfRepo {
     }
 
     /// Persiste uma sessão de benchmark (+ suas métricas). Retorna o id da sessão.
-    pub async fn save_session(&self, label: &str, r: &BenchmarkResult) -> Result<i64> {
+    pub async fn save_session(
+        &self,
+        label: &str,
+        r: &BenchmarkResult,
+        machine_fingerprint: Option<&str>,
+        source: &str,
+    ) -> Result<i64> {
         let id = sqlx::query(
             "INSERT INTO benchmark_sessions \
-             (ts, kind, suite_version, duration_ms, target, conditions_json, runs, confidence, contaminated, temp_start, temp_end) \
-             VALUES (?, ?, ?, ?, ?, '{}', ?, ?, ?, ?, ?)",
+             (ts, kind, suite_version, duration_ms, target, conditions_json, runs, confidence, contaminated, temp_start, temp_end, machine_fingerprint, source) \
+             VALUES (?, ?, ?, ?, ?, '{}', ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(now_ms())
         .bind(&r.kind)
@@ -422,6 +435,8 @@ impl PerfRepo {
         .bind(r.contaminated as i64)
         .bind(r.temp_start_c)
         .bind(r.temp_end_c)
+        .bind(machine_fingerprint)
+        .bind(source)
         .execute(&self.db)
         .await?
         .last_insert_rowid();
@@ -508,6 +523,39 @@ impl PerfRepo {
         Ok(out)
     }
 
+    /// Sessões filtradas por source (mais recentes primeiro).
+    /// Fallback legado: registros sem source explícito usam o DEFAULT 'manual' do schema.
+    pub async fn sessions_by_source(&self, source: &str, limit: i64) -> Result<Vec<BenchmarkSessionInfo>> {
+        let rows = sqlx::query(
+            "SELECT id, ts, kind, suite_version, COALESCE(target, '') AS label, confidence, contaminated \
+             FROM benchmark_sessions WHERE COALESCE(source, 'manual') = ? ORDER BY ts DESC LIMIT ?",
+        )
+        .bind(source)
+        .bind(limit)
+        .fetch_all(&self.db)
+        .await?;
+
+        let mut out = Vec::with_capacity(rows.len());
+        for row in rows {
+            let id: i64 = row.get("id");
+            let metrics = self.session_metrics(id).await?;
+            let confidence = row.get::<i64, _>("confidence") as u8;
+            let contaminated = row.get::<i64, _>("contaminated") != 0;
+            out.push(BenchmarkSessionInfo {
+                id,
+                ts: row.get("ts"),
+                kind: row.get("kind"),
+                suite_version: row.get("suite_version"),
+                label: row.get("label"),
+                metrics,
+                confidence,
+                stable: confidence >= 70 && !contaminated,
+                contaminated,
+            });
+        }
+        Ok(out)
+    }
+
     /// Reconstrói o `BenchmarkResult` de uma sessão (para comparação).
     pub async fn get_result(&self, session_id: i64) -> Result<Option<BenchmarkResult>> {
         let row = sqlx::query(
@@ -568,7 +616,13 @@ impl OptRepo {
     }
 
     /// Persiste uma execução do pipeline. Retorna o id atribuído.
-    pub async fn save_run(&self, info: &OptimizationRunInfo, snapshot_id: i64) -> Result<i64> {
+    pub async fn save_run(
+        &self,
+        info: &OptimizationRunInfo,
+        snapshot_id: i64,
+        machine_fingerprint: Option<&str>,
+        source: &str,
+    ) -> Result<i64> {
         let decision = match info.decision {
             OptDecision::Keep => "keep",
             OptDecision::Revert => "revert",
@@ -576,8 +630,8 @@ impl OptRepo {
         };
         let id = sqlx::query(
             "INSERT INTO optimization_runs \
-             (ts, optimization_id, snapshot_id, before_session, after_session, status, decision, confidence, evidence_json) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             (ts, optimization_id, snapshot_id, before_session, after_session, status, decision, confidence, evidence_json, machine_fingerprint, source) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(info.ts)
         .bind(&info.optimization_id)
@@ -588,10 +642,33 @@ impl OptRepo {
         .bind(decision)
         .bind(info.confidence as i64)
         .bind(serde_json::to_string(info)?)
+        .bind(machine_fingerprint)
+        .bind(source)
         .execute(&self.db)
         .await?
         .last_insert_rowid();
         Ok(id)
+    }
+
+    /// Execuções filtradas por source (mais recentes primeiro).
+    /// Fallback legado: registros sem source usam o DEFAULT 'optimization_catalog' do schema.
+    pub async fn runs_by_source(&self, source: &str, limit: i64) -> Result<Vec<OptimizationRunInfo>> {
+        let rows = sqlx::query(
+            "SELECT id, evidence_json FROM optimization_runs \
+             WHERE COALESCE(source, 'optimization_catalog') = ? ORDER BY ts DESC LIMIT ?",
+        )
+        .bind(source)
+        .bind(limit)
+        .fetch_all(&self.db)
+        .await?;
+        let mut out = Vec::with_capacity(rows.len());
+        for r in rows {
+            let json: String = r.get("evidence_json");
+            let mut info: OptimizationRunInfo = serde_json::from_str(&json)?;
+            info.id = r.get("id");
+            out.push(info);
+        }
+        Ok(out)
     }
 
     /// Lista execuções (mais recentes primeiro). Reconstrói a partir do evidence_json.

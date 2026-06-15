@@ -23,7 +23,7 @@ export function AxSignalLockMeter({
           <span key={i} className={`ax-lock-bar${i < lit ? " on" : ""}`} style={{ height: h }} />
         ))}
       </span>
-      <span className="ax-lock-label">{label ?? (stable ? `lock ${confidence}%` : "instável")}</span>
+      <span className="ax-lock-label">{label ?? (stable ? `${confidence}% estável` : `${confidence}% instável`)}</span>
     </div>
   );
 }

@@ -1,97 +1,93 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   useOptimize,
   type OptDecision,
   type OptimizationRunInfo,
-  type StartupItem,
 } from "@/shared/hooks/useOptimize";
-import { Modal } from "@/shared/components/Modal";
-import { useToast } from "@/shared/components/Toast";
+import { AxBadge, type AxBadgeVariant, AxEmptyState, AxButton } from "@/shared/apex";
 import "./optimize.css";
 
-const DECISION: Record<OptDecision, { label: string; cls: string }> = {
-  Keep: { label: "✓ Mantido", cls: "ok" },
-  Revert: { label: "↺ Revertido", cls: "warn" },
-  Inconclusive: { label: "≈ Inconclusivo", cls: "neutral" },
+const DECISION: Record<OptDecision, { label: string; variant: AxBadgeVariant }> = {
+  Keep:         { label: "Mantido",     variant: "ok"      },
+  Revert:       { label: "Revertido",   variant: "warn"    },
+  Inconclusive: { label: "Inconclusivo", variant: "neutral" },
 };
 
-const RISK_CLS: Record<string, string> = {
-  Safe: "ok",
-  Moderate: "warn",
-  Advanced: "err",
-  Experimental: "err",
+const RISK_VARIANT: Record<string, AxBadgeVariant> = {
+  Safe:         "ok",
+  Moderate:     "warn",
+  Advanced:     "risk",
+  Experimental: "risk",
+};
+const RISK_LABEL: Record<string, string> = {
+  Safe:         "Seguro",
+  Moderate:     "Moderado",
+  Advanced:     "Avançado",
+  Experimental: "Experimental",
+};
+const STATUS_LABEL: Record<string, string> = {
+  applied:      "Aplicado",
+  kept:         "Mantido",
+  reverted:     "Revertido",
+  inconclusive: "Inconclusivo",
+  failed:       "Falhou",
+};
+const METRIC_LABEL_SHORT: Record<string, string> = {
+  cpu_multi:  "CPU",
+  cpu_single: "CPU Single",
+  cpu_score:  "CPU Score",
+  fps_avg:    "FPS",
+  fps_1pct:   "1% Low",
+  ram_latency: "RAM",
+  storage_seq: "Leitura Seq.",
 };
 
 function fmtTime(ts: number) {
-  try {
-    return new Date(ts).toLocaleString();
-  } catch {
-    return "—";
-  }
+  try { return new Date(ts).toLocaleString(); } catch { return "—"; }
 }
 
-/** Resumo do delta da métrica primária (cpu_multi) de uma comparação. */
 function primaryDelta(run: OptimizationRunInfo): string | null {
   const row = run.comparison?.rows.find((r) => r.metric === "cpu_multi") ?? run.comparison?.rows[0];
   if (!row) return null;
-  return `${row.metric}: ${row.delta_pct >= 0 ? "+" : ""}${row.delta_pct.toFixed(2)}% (±${row.margin_pct.toFixed(2)}%)`;
+  const label = METRIC_LABEL_SHORT[row.metric] ?? row.metric;
+  return `${label}: ${row.delta_pct >= 0 ? "+" : ""}${row.delta_pct.toFixed(1)}%`;
 }
 
 export function OptimizationCenterPage() {
-  const { available, catalog, history, running, error, run, rollback, startupAnalysis, disableStartup } =
-    useOptimize();
-  const toast = useToast();
+  const { available, catalog, history, running, error, run, rollback } = useOptimize();
+  const nav = useNavigate();
   const [lastRun, setLastRun] = useState<OptimizationRunInfo | null>(null);
-  const [startup, setStartup] = useState<StartupItem[] | null>(null);
-  const [pendingDisable, setPendingDisable] = useState<StartupItem | null>(null);
-  const [disabling, setDisabling] = useState(false);
 
   async function onApply(id: string) {
     const r = await run(id);
     if (r) setLastRun(r);
   }
-  async function onStartup() {
-    const items = await startupAnalysis();
-    if (items) setStartup(items);
-  }
-  async function onConfirmDisable() {
-    if (!pendingDisable) return;
-    setDisabling(true);
-    const snapId = await disableStartup(pendingDisable.name);
-    setDisabling(false);
-    if (snapId !== null) {
-      toast(
-        "success",
-        `"${pendingDisable.name}" desabilitado · snapshot #${snapId} criado (reversível no Rollback Center).`,
-      );
-      const items = await startupAnalysis(); // reflete a remoção
-      if (items) setStartup(items);
-    } else {
-      toast("danger", "Não foi possível desabilitar o item.");
-    }
-    setPendingDisable(null);
-  }
 
   return (
     <div className="optimize">
-      <header className="dash-head">
+      <header className="opt-head">
         <div>
-          <h1>Centro de Otimizações</h1>
+          <h1>Central de Otimizações</h1>
           <p>Toda otimização é medida e comparada. Mantida só se a evidência comprovar ganho.</p>
         </div>
       </header>
 
       {!available && (
-        <div className="glass banner">⚠ Use <span className="mono">npm run tauri dev</span> para aplicar otimizações reais.</div>
+        <div className="opt-banner">
+          ⚠ Use <span className="mono">npm run tauri dev</span> para aplicar otimizações reais.
+        </div>
       )}
-      {error && <div className="glass banner err">Erro: {error}</div>}
+      {error && <div className="opt-banner opt-banner-risk">Erro: {error}</div>}
 
       {/* Resultado da última execução */}
       {lastRun && (
-        <section className="glass panel">
-          <div className="panel-title">
-            Resultado: {lastRun.name}
-            <span className={`opt-decision ${DECISION[lastRun.decision].cls}`}>{DECISION[lastRun.decision].label}</span>
+        <section className="ax-surface ax-card">
+          <div className="opt-result-name">
+            {lastRun.name}
+            <AxBadge variant={DECISION[lastRun.decision].variant}>
+              {DECISION[lastRun.decision].label}
+            </AxBadge>
           </div>
           <p className="opt-msg">{lastRun.message}</p>
           <div className="opt-evi">
@@ -105,106 +101,71 @@ export function OptimizationCenterPage() {
       )}
 
       {/* Catálogo */}
-      <section className="glass panel">
-        <div className="panel-title">Otimizações disponíveis</div>
-        <div className="opt-list">
-          {catalog.length === 0 ? (
-            <div className="empty-state">{available ? "Carregando catálogo…" : "Indisponível no navegador"}</div>
-          ) : (
-            catalog.map((o) => (
-              <div key={o.id} className="opt-card glass">
-                <div className="opt-head">
+      <section className="ax-surface ax-card">
+        <div className="opt-section-hd">Otimizações disponíveis</div>
+        {catalog.length === 0 ? (
+          <AxEmptyState
+            icon="hub"
+            title={available ? "Carregando catálogo…" : "Indisponível no navegador"}
+            description={available ? undefined : "Use tauri dev para acesso ao catálogo real."}
+          />
+        ) : (
+          <div className="opt-list">
+            {catalog.map((o) => (
+              <div key={o.id} className="opt-card">
+                <div className="opt-card-head">
                   <strong>{o.name}</strong>
-                  <span className={`risk ${RISK_CLS[o.risk] ?? "neutral"}`}>{o.risk}</span>
+                  <AxBadge variant={RISK_VARIANT[o.risk] ?? "neutral"}>{RISK_LABEL[o.risk] ?? o.risk}</AxBadge>
                 </div>
                 <p className="opt-desc">{o.description}</p>
                 <p className="opt-impact">Impacto esperado: {o.expected_impact}</p>
                 <button
-                  className="btn primary"
+                  className="ax-btn ax-btn-primary"
+                  style={{ marginTop: 4 }}
                   onClick={() => onApply(o.id)}
                   disabled={!available || running !== null}
                 >
                   {running === o.id ? "Aplicando + medindo… (~30s)" : "Aplicar e medir"}
                 </button>
               </div>
-            ))
-          )}
-        </div>
-      </section>
-
-      {/* Análise de inicialização (somente leitura) */}
-      <section className="glass panel">
-        <div className="panel-title">
-          Análise de Inicialização
-          <button className="btn ghost sm" onClick={onStartup} disabled={!available}>Analisar</button>
-        </div>
-        {startup === null ? (
-          <div className="empty-state">
-            Lista os apps que iniciam com o Windows. Itens HKCU podem ser desabilitados de forma reversível.
-          </div>
-        ) : startup.length === 0 ? (
-          <div className="empty-state ok">Nenhum app de inicialização em Run (HKCU/HKLM).</div>
-        ) : (
-          <ul className="startup-list">
-            {startup.map((s, i) => (
-              <li key={i} className="startup-item">
-                <span className="su-name">{s.name}</span>
-                <span className="su-loc">{s.location}</span>
-                <span className="su-cmd mono">{s.command}</span>
-                {s.location === "HKCU" ? (
-                  <button className="btn ghost sm" onClick={() => setPendingDisable(s)} disabled={!available}>
-                    Desabilitar
-                  </button>
-                ) : (
-                  <button className="btn ghost sm" disabled title="Itens HKLM exigem administrador">
-                    Requer admin
-                  </button>
-                )}
-              </li>
             ))}
-          </ul>
+          </div>
         )}
       </section>
 
-      <Modal
-        open={!!pendingDisable}
-        title="Desabilitar item de inicialização?"
-        onClose={() => (disabling ? undefined : setPendingDisable(null))}
-        footer={
-          <>
-            <button className="btn ghost" onClick={() => setPendingDisable(null)} disabled={disabling}>
-              Cancelar
-            </button>
-            <button className="btn primary" onClick={onConfirmDisable} disabled={disabling}>
-              {disabling ? "Desabilitando…" : "Desabilitar"}
-            </button>
-          </>
-        }
-      >
-        {pendingDisable && (
-          <>
-            O item deixará de iniciar com o Windows. Será criado um snapshot — você pode reabilitá-lo a qualquer
-            momento pelo <strong>Rollback Center</strong>.
-            <p style={{ marginTop: "var(--s-3)" }}>
-              Item: <strong>{pendingDisable.name}</strong>
-            </p>
-          </>
-        )}
-      </Modal>
+      {/* Gerenciador de Inicialização — link para tela dedicada */}
+      <section className="ax-surface ax-card">
+        <div className="opt-section-hd">Inicialização do Windows</div>
+        <div className="opt-startup-link">
+          <div className="opt-startup-link-text">
+            <strong>Gerenciador de Inicialização</strong>
+            <p>Veja e controle os apps que iniciam com o Windows. Cada alteração cria um snapshot reversível.</p>
+          </div>
+          <AxButton size="sm" icon="startup" onClick={() => nav("/startup")}>
+            Abrir
+          </AxButton>
+        </div>
+      </section>
 
-      {/* Histórico */}
-      <section className="glass panel">
-        <div className="panel-title">Histórico de otimizações</div>
+      {/* Histórico de otimizações */}
+      <section className="ax-surface ax-card">
+        <div className="opt-section-hd">Histórico de otimizações</div>
         {history.length === 0 ? (
-          <div className="empty-state">Nenhuma otimização aplicada ainda.</div>
+          <AxEmptyState
+            icon="hub"
+            title="Nenhuma otimização aplicada ainda"
+            description="As otimizações aplicadas aparecerão aqui com o resultado de cada execução."
+          />
         ) : (
           <ul className="opt-history">
             {history.map((h) => (
               <li key={h.id} className="opt-hist-item">
                 <div className="ohi-main">
                   <strong>{h.name}</strong>
-                  <span className={`opt-decision ${DECISION[h.decision].cls}`}>{DECISION[h.decision].label}</span>
-                  <span className="ohi-status">{h.status}</span>
+                  <AxBadge variant={DECISION[h.decision].variant}>
+                    {DECISION[h.decision].label}
+                  </AxBadge>
+                  <span className="ohi-status">{STATUS_LABEL[h.status] ?? h.status}</span>
                 </div>
                 <p className="opt-msg">{h.message}</p>
                 <div className="opt-evi">
@@ -212,7 +173,13 @@ export function OptimizationCenterPage() {
                   {primaryDelta(h) && <> · {primaryDelta(h)}</>}
                 </div>
                 {h.status === "kept" && (
-                  <button className="btn ghost sm" onClick={() => rollback(h.id)}>Reverter</button>
+                  <button
+                    className="ax-btn ax-btn-ghost ax-btn-sm"
+                    style={{ marginTop: 4, alignSelf: "flex-start" }}
+                    onClick={() => rollback(h.id)}
+                  >
+                    Reverter
+                  </button>
                 )}
               </li>
             ))}

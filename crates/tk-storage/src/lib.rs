@@ -8,8 +8,25 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub type Db = SqlitePool;
 
+/// Identificador de origem de uma sessão de benchmark ou execução de otimização.
+/// Tipo aberto (String) — novos IDs surgem sem migração de schema.
+pub type SessionSource = String;
+
+/// Constantes dos IDs de source atualmente reconhecidos.
+pub mod session_source {
+    /// Benchmark iniciado explicitamente pelo usuário no Performance Lab.
+    pub const MANUAL: &str = "manual";
+    /// Benchmark ou execução disparado por ativação de perfil.
+    pub const PROFILE_ACTIVATION: &str = "profile_activation";
+    /// Benchmark ou execução disparado pelo Hub de Otimizações (catálogo).
+    pub const OPTIMIZATION_CATALOG: &str = "optimization_catalog";
+    /// Benchmark automático do sistema (reservado, ainda não utilizado).
+    pub const AUTOMATIC: &str = "automatic";
+}
+
 pub mod housekeeping;
 pub mod repos;
+mod tests;
 pub use repos::*;
 
 /// Erro unificado da camada de storage.

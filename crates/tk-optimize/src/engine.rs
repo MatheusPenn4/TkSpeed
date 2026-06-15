@@ -6,11 +6,15 @@ use tk_contracts::{
     BenchmarkResult, OptDecision, OptimizationInfo, OptimizationRunInfo, PerfComparison, PerfVerdict,
     StartupItem,
 };
+use crate::configs::ConfigRegistry;
+use crate::evidence::{extract_primary_gain, EvidenceRepo};
+use crate::machine;
 use tk_perflab::{build_noise_profile, compare, run_complete, run_cpu, run_io, run_ram};
 use tk_platform_win::registry;
 use tk_rollback::{apply_actions, verify_actions, ProtectionService, ReversibleAction};
 use tk_storage::{now_ms, AuditRepo, Db, OptRepo, PerfRepo};
 
+use tk_storage::session_source;
 use crate::catalog::{self, Validation};
 
 /// Chave Run do usuário (HKCU) — inicialização reversível sem elevação.
@@ -37,6 +41,9 @@ impl Engine {
     fn audit(&self) -> AuditRepo {
         AuditRepo::new(self.db.clone())
     }
+    fn evidence(&self) -> EvidenceRepo {
+        EvidenceRepo::new(self.db.clone())
+    }
 
     pub fn catalog_info(&self) -> Vec<OptimizationInfo> {
         catalog::catalog_info()
@@ -53,17 +60,18 @@ impl Engine {
 
         // plan + snapshot (sem snapshot → não aplica)
         let actions = opt.plan()?;
+        let fp = machine::fingerprint();
         let snapshot_id = self
             .protection()
-            .create_snapshot(&format!("optimize:{id}"), &actions)
+            .create_snapshot(&format!("optimize:{id}"), &actions, Some(&fp))
             .await
             .map_err(|e| e.to_string())?;
         self.audit().log("user", "optimize.intent", &format!("{{\"id\":\"{id}\"}}")).await.ok();
 
         match opt.validation() {
-            Validation::Benchmark(suite) => self.run_benchmarked(id, &meta, snapshot_id, &actions, suite).await,
-            Validation::SpaceFreed => self.run_space_freed(id, &meta, snapshot_id, &actions).await,
-            Validation::Manual => self.run_manual(id, &meta, snapshot_id, &actions).await,
+            Validation::Benchmark(suite) => self.run_benchmarked(id, &meta, snapshot_id, &actions, suite, &fp).await,
+            Validation::SpaceFreed => self.run_space_freed(id, &meta, snapshot_id, &actions, &fp).await,
+            Validation::Manual => self.run_manual(id, &meta, snapshot_id, &actions, &fp).await,
         }
     }
 
@@ -75,21 +83,22 @@ impl Engine {
         snapshot_id: i64,
         actions: &[ReversibleAction],
         suite: &str,
+        fp: &str,
     ) -> Result<OptimizationRunInfo, String> {
         let before = run_suite(suite).await?;
-        let before_id = self.perf().save_session(&format!("antes: {}", meta.name), &before).await.map_err(|e| e.to_string())?;
+        let before_id = self.perf().save_session(&format!("antes: {}", meta.name), &before, Some(fp), session_source::OPTIMIZATION_CATALOG).await.map_err(|e| e.to_string())?;
 
         if let Err(e) = apply_actions(actions) {
             let _ = self.protection().rollback(snapshot_id).await;
-            return self.finish(id, meta, snapshot_id, Some(before_id), None, "failed", OptDecision::Inconclusive, None, 0, &format!("Falha ao aplicar: {e}")).await;
+            return self.finish(id, meta, snapshot_id, Some(before_id), None, "failed", OptDecision::Inconclusive, None, 0, &format!("Falha ao aplicar: {e}"), fp).await;
         }
         if !verify_actions(actions).unwrap_or(false) {
             let _ = self.protection().rollback(snapshot_id).await;
-            return self.finish(id, meta, snapshot_id, Some(before_id), None, "reverted", OptDecision::Revert, None, 0, "Pós-condição não confirmada — revertido.").await;
+            return self.finish(id, meta, snapshot_id, Some(before_id), None, "reverted", OptDecision::Revert, None, 0, "Pós-condição não confirmada — revertido.", fp).await;
         }
 
         let after = run_suite(suite).await?;
-        let after_id = self.perf().save_session(&format!("depois: {}", meta.name), &after).await.map_err(|e| e.to_string())?;
+        let after_id = self.perf().save_session(&format!("depois: {}", meta.name), &after, Some(fp), session_source::OPTIMIZATION_CATALOG).await.map_err(|e| e.to_string())?;
 
         let hist = self.perf().metrics_by_suite(suite).await.map_err(|e| e.to_string())?;
         let noise = build_noise_profile(suite, &hist);
@@ -102,7 +111,7 @@ impl Engine {
         if do_rollback {
             let _ = self.protection().rollback(snapshot_id).await;
         }
-        self.finish(id, meta, snapshot_id, Some(before_id), Some(after_id), status, decision, Some(comp), confidence, &msg).await
+        self.finish(id, meta, snapshot_id, Some(before_id), Some(after_id), status, decision, Some(comp), confidence, &msg, fp).await
     }
 
     /// Caminho de limpeza: evidência = espaço liberado (sem benchmark).
@@ -112,17 +121,18 @@ impl Engine {
         meta: &OptimizationInfo,
         snapshot_id: i64,
         actions: &[ReversibleAction],
+        fp: &str,
     ) -> Result<OptimizationRunInfo, String> {
         let applied = apply_actions(actions);
         let (status, decision) = space_freed_decision(applied.is_ok());
         match applied {
             Ok(freed) => {
                 let mb = freed as f64 / 1_000_000.0;
-                self.finish(id, meta, snapshot_id, None, None, status, decision, None, 100, &format!("Liberados {mb:.1} MB para a quarentena (reversível).")).await
+                self.finish(id, meta, snapshot_id, None, None, status, decision, None, 100, &format!("Liberados {mb:.1} MB para a quarentena (reversível)."), fp).await
             }
             Err(e) => {
                 let _ = self.protection().rollback(snapshot_id).await;
-                self.finish(id, meta, snapshot_id, None, None, status, decision, None, 0, &format!("Falha na limpeza: {e}")).await
+                self.finish(id, meta, snapshot_id, None, None, status, decision, None, 0, &format!("Falha na limpeza: {e}"), fp).await
             }
         }
     }
@@ -134,17 +144,19 @@ impl Engine {
         meta: &OptimizationInfo,
         snapshot_id: i64,
         actions: &[ReversibleAction],
+        fp: &str,
     ) -> Result<OptimizationRunInfo, String> {
         if let Err(e) = apply_actions(actions) {
             let _ = self.protection().rollback(snapshot_id).await;
             let (status, decision) = manual_decision(false);
-            return self.finish(id, meta, snapshot_id, None, None, status, decision, None, 0, &format!("Falha ao aplicar: {e}")).await;
+            return self.finish(id, meta, snapshot_id, None, None, status, decision, None, 0, &format!("Falha ao aplicar: {e}"), fp).await;
         }
         let _ = verify_actions(actions);
         let (status, decision) = manual_decision(true);
         self.finish(
             id, meta, snapshot_id, None, None, status, decision, None, 0,
             "Aplicado e reversível. Comprove com uma captura de FPS no jogo (antes/depois) para manter com evidência.",
+            fp,
         )
         .await
     }
@@ -162,7 +174,15 @@ impl Engine {
         comparison: Option<PerfComparison>,
         confidence: u8,
         msg: &str,
+        fp: &str,
     ) -> Result<OptimizationRunInfo, String> {
+        // Extrair ganho ANTES de mover `comparison` para dentro de `info`.
+        let evidence_gain = if matches!(decision, OptDecision::Keep) {
+            comparison.as_ref().and_then(extract_primary_gain)
+        } else {
+            None
+        };
+
         let info = OptimizationRunInfo {
             id: 0,
             ts: now_ms(),
@@ -176,8 +196,21 @@ impl Engine {
             comparison,
             message: msg.into(),
         };
-        let run_id = self.opt().save_run(&info, snapshot_id).await.map_err(|e| e.to_string())?;
+        let run_id = self.opt().save_run(&info, snapshot_id, Some(fp), session_source::OPTIMIZATION_CATALOG).await.map_err(|e| e.to_string())?;
         self.audit().log("user", "optimize.run", &format!("{{\"id\":\"{id}\",\"status\":\"{status}\"}}")).await.ok();
+
+        // Keep + comparação confiável → acumular evidência histórica.
+        if let Some(gain) = evidence_gain {
+            let relevance: Vec<String> = ConfigRegistry::new()
+                .find(id)
+                .map(|c| c.meta().benchmark_relevance.iter().map(|s| s.to_string()).collect())
+                .unwrap_or_default();
+            self.evidence()
+                .record_success(fp, id, session_source::OPTIMIZATION_CATALOG, &relevance, gain)
+                .await
+                .ok();
+        }
+
         Ok(OptimizationRunInfo { id: run_id, ..info })
     }
 
@@ -218,9 +251,10 @@ impl Engine {
             new: None,
         };
 
+        let fp = machine::fingerprint();
         let snap_id = self
             .protection()
-            .create_snapshot(&format!("startup:disable:{name}"), std::slice::from_ref(&action))
+            .create_snapshot(&format!("startup:disable:{name}"), std::slice::from_ref(&action), Some(&fp))
             .await
             .map_err(|e| e.to_string())?;
 

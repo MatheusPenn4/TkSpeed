@@ -23,6 +23,7 @@ authors = ["TkSpeed"]
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.10"
 thiserror = "1"
 anyhow = "1"
 tracing = "0.1"

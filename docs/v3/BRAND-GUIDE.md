@@ -1,6 +1,15 @@
 # TkSpeed — Brand Guide (V3 · Apex)
 
-Identidade oficial do produto. Instrument-grade / Performance Engineering.
+Identidade oficial do produto. Instrument-grade / Engenharia de Performance.
+
+## Assinatura oficial da marca
+> **TkSpeed**
+> Engenharia de Performance
+
+Assinatura única do produto (rail, splash, brand guide, landing interna, metadados do app,
+sobre, instalação, documentação). **"Performance" é o termo-marca oficial** — não substituir por
+"desempenho". Interface 100% em português brasileiro; loanwords técnicos consagrados permanecem
+apenas quando são o termo de mercado (ex.: "Benchmark").
 Os tokens vivem em `apps/desktop/src/shared/apex/apex.css`; os componentes de
 marca em `apps/desktop/src/shared/apex/branding/`.
 
@@ -58,7 +67,7 @@ Nunca encostar texto/borda dentro dessa zona.
 Símbolo: ≥16px de altura. Logo completo: ≥20px de altura (abaixo disso, usar só o símbolo).
 
 ## 5. Ícone do aplicativo (SO)
-Gerado de uma fonte **quadrada 1024×1024** (símbolo centralizado, ~82% do canvas) via `tauri icon`,
+Gerado de uma fonte **quadrada 1024×1024** (símbolo centralizado, ~90% do canvas) via `tauri icon`,
 produzindo `src-tauri/icons/*` (icon.ico multi-res, pngs, icns). Cobre taskbar, executável,
 instalador (NSIS/MSI), atalhos e Menu Iniciar.
 > Nota: a arte-fonte do símbolo é retangular (256×162); foi padronizada para quadrado com

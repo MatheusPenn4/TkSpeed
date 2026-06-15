@@ -39,10 +39,10 @@
       "icons/icon.ico"
     ],
     "publisher": "TkSpeed",
-    "copyright": "© 2026 TkSpeed — Alpha",
+    "copyright": "© 2026 TkSpeed",
     "category": "Utility",
-    "shortDescription": "Plataforma de performance para Windows (Alpha)",
-    "longDescription": "TkSpeed — análise, monitoramento e otimização de performance com evidência (benchmark) e rollback. Versão Alpha para testes.",
+    "shortDescription": "Plataforma de performance para Windows",
+    "longDescription": "TkSpeed — análise, monitoramento e otimização de performance com evidência (benchmark) e rollback automático. Cada otimização é medida e mantida somente se houver ganho comprovado.",
     "windows": {
       "nsis": {
         "installMode": "perMachine",

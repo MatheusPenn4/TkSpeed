@@ -11,5 +11,6 @@ export * from "./AxSignalLockMeter";
 export * from "./AxEvidenceCard";
 export * from "./AxCommandPalette";
 export * from "./AxRail";
+export * from "./AxShell";
 export * from "./SplashV3";
 export * from "./branding";

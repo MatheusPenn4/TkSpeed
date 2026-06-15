@@ -9,6 +9,14 @@ tk-storage = { path = "../tk-storage" }
 tk-platform-win = { path = "../tk-platform-win" }
 tk-rollback = { path = "../tk-rollback" }
 tk-perflab = { path = "../tk-perflab" }
+sqlx = { workspace = true }
 tokio = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = { workspace = true }
+sysinfo = "0.31"
+thiserror = { workspace = true }
 tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
