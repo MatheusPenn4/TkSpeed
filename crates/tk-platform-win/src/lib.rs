@@ -151,7 +151,10 @@ pub mod power {
     #[cfg(windows)]
     mod imp {
         use super::super::PlatformError;
+        use std::os::windows::process::CommandExt;
         use std::process::Command;
+
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
 
         fn is_guid(t: &str) -> bool {
             t.len() == 36
@@ -173,6 +176,7 @@ pub mod power {
         pub fn get_active_scheme() -> Result<String, PlatformError> {
             let out = Command::new("powercfg")
                 .arg("/getactivescheme")
+                .creation_flags(CREATE_NO_WINDOW)
                 .output()
                 .map_err(|e| PlatformError::Api(format!("powercfg: {e}")))?;
             let s = String::from_utf8_lossy(&out.stdout);
@@ -183,6 +187,7 @@ pub mod power {
             let st = Command::new("powercfg")
                 .arg("/setactive")
                 .arg(guid)
+                .creation_flags(CREATE_NO_WINDOW)
                 .status()
                 .map_err(|e| PlatformError::Api(format!("powercfg: {e}")))?;
             if st.success() {
@@ -195,6 +200,7 @@ pub mod power {
         pub fn scheme_exists(guid: &str) -> bool {
             Command::new("powercfg")
                 .arg("/list")
+                .creation_flags(CREATE_NO_WINDOW)
                 .output()
                 .ok()
                 .map(|o| String::from_utf8_lossy(&o.stdout).to_lowercase().contains(&guid.to_lowercase()))

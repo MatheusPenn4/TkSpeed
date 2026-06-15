@@ -188,8 +188,8 @@ impl FrameSource for PresentMonFrameSource {
         let out_str = out.to_string_lossy().to_string();
 
         // .arg() encadeado (cada um aceita AsRef<OsStr> — evita array de tipos mistos).
-        let status = std::process::Command::new(&self.exe)
-            .arg("-process_name")
+        let mut cmd = std::process::Command::new(&self.exe);
+        cmd.arg("-process_name")
             .arg(target)
             .arg("-output_file")
             .arg(&out_str)
@@ -197,7 +197,13 @@ impl FrameSource for PresentMonFrameSource {
             .arg(&secs)
             .arg("-terminate_after_timed")
             .arg("-no_top")
-            .arg("-stop_existing_session")
+            .arg("-stop_existing_session");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000);
+        }
+        let status = cmd
             .status()
             .map_err(|e| format!("Falha ao executar o PresentMon: {e} (precisa de privilégios de administrador)"))?;
 
