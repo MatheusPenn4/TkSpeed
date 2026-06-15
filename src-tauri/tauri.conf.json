@@ -46,7 +46,8 @@
     "windows": {
       "nsis": {
         "installMode": "perMachine",
-        "languages": ["PortugueseBR", "English"]
+        "languages": ["PortugueseBR", "English"],
+        "installerIcon": "icons/icon.ico"
       }
     }
   },

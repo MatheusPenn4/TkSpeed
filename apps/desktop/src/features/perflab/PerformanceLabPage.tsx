@@ -32,10 +32,10 @@ const METRIC_LABEL: Record<string, string> = {
 };
 
 const KINDS: { id: string; label: string }[] = [
-  { id: "cpu", label: "CPU" },
-  { id: "ram", label: "RAM" },
-  { id: "io", label: "Storage" },
-  { id: "complete", label: "Completo" },
+  { id: "cpu",      label: "CPU"         },
+  { id: "ram",      label: "RAM"         },
+  { id: "io",       label: "Disco"       },
+  { id: "complete", label: "Completo"    },
 ];
 
 const VERDICT: Record<PerfVerdict, { label: string; variant: AxBadgeVariant }> = {
@@ -46,8 +46,13 @@ const VERDICT: Record<PerfVerdict, { label: string; variant: AxBadgeVariant }> =
 };
 
 const BOUND_LABEL: Record<string, string> = {
-  Cpu: "CPU Bound", Gpu: "GPU Bound", Ram: "RAM Bound", Storage: "Storage Bound",
-  Thermal: "Thermal Bound", Balanced: "Balanceado", Inconclusive: "Inconclusivo",
+  Cpu:         "Limitado por CPU",
+  Gpu:         "Limitado por GPU",
+  Ram:         "Limitado por RAM",
+  Storage:     "Limitado por Disco",
+  Thermal:     "Limitado por Temperatura",
+  Balanced:    "Balanceado",
+  Inconclusive: "Inconclusivo",
 };
 
 function boundCls(primary: string): string {

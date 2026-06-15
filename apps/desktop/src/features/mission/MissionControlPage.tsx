@@ -120,25 +120,25 @@ function envelopeLine(d: Diagnosis | null): string {
 }
 
 const CAP_LABELS: Record<string, string> = {
-  cpu_monitoring: "CPU Monitoring",
-  ram_monitoring: "RAM Monitoring",
-  storage_monitoring: "Storage Monitoring",
-  gpu_monitoring: "GPU Monitoring",
-  thermal_monitoring: "Thermal Sensors",
-  fps_measurement: "FPS Measurement",
-  rollback_protection: "Rollback Protection",
-  benchmark_engine: "Benchmark Engine",
-  optimization_engine: "Optimization Engine",
-  admin_privileges: "Admin Privileges",
+  cpu_monitoring:      "Monitoramento da CPU",
+  ram_monitoring:      "Monitoramento da RAM",
+  storage_monitoring:  "Monitoramento de Armazenamento",
+  gpu_monitoring:      "Monitoramento da GPU",
+  thermal_monitoring:  "Sensores Térmicos",
+  fps_measurement:     "Medição de FPS",
+  rollback_protection: "Proteção por Restauração",
+  benchmark_engine:    "Motor de Benchmark",
+  optimization_engine: "Motor de Otimização",
+  admin_privileges:    "Privilégios Administrativos",
 };
 function capLabel(id: string): string {
   return CAP_LABELS[id] ?? id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 const CAP: Record<string, { variant: AxBadgeVariant; text: string }> = {
-  ready: { variant: "ok", text: "Pronto" },
-  limited: { variant: "warn", text: "Limitado" },
-  missing: { variant: "warn", text: "Falta dep." },
-  unavailable: { variant: "neutral", text: "Indisponível" },
+  ready:       { variant: "ok",      text: "Pronto"        },
+  limited:     { variant: "warn",    text: "Limitado"      },
+  missing:     { variant: "warn",    text: "Não disponível" },
+  unavailable: { variant: "neutral", text: "Indisponível"  },
 };
 const SNAP_STATUS: Record<string, string> = { active: "Ativo", restored: "Restaurado", expired: "Expirado" };
 
@@ -261,7 +261,21 @@ export function MissionControlPage() {
               </AxButton>
             </div>
           </div>
-        ) : null}
+        ) : (
+          <div className="mc-hero-cta">
+            <span className="ax-label">Estado Operacional</span>
+            <div className="mc-hero-cta-row">
+              <span>
+                {(m.diag.score.total ?? 0) >= 800
+                  ? "Sistema em ótimo estado — continue monitorando para manter a performance."
+                  : (m.diag.score.total ?? 0) >= 600
+                  ? "Sistema estável. Otimizações disponíveis podem melhorar a pontuação."
+                  : "Sistema funcional. Aplique otimizações para melhorar a performance geral."}
+              </span>
+              <AxButton variant="ghost" icon="hub" onClick={() => nav("/hub")}>Otimizações</AxButton>
+            </div>
+          </div>
+        )}
       </AxCard>
 
       {/* System Capabilities — strip compacto */}
@@ -317,16 +331,28 @@ export function MissionControlPage() {
 
         <AxCard className="mc-col-5">
           <span className="ax-label">Qualidade da Medição</span>
-          {lastBench ? (
+          {lastBench && lastBench.confidence >= 60 ? (
             <div className="mc-lock">
               <AxSignalLockMeter confidence={lastBench.confidence} stable={lastBench.stable} />
-              <p className="mc-muted ax-data">
-                ruído de base: {m.noise ? `${m.noise.source} (${m.noise.sessions} sess.)` : "—"}
+              <p className="mc-muted">
+                Confiabilidade: <strong>{lastBench.stable ? "alta" : "em calibração"}</strong>
               </p>
-              <p className="mc-muted">Confiabilidade dos dados: {lastBench.stable ? "alta" : "baixa (instável)"}</p>
+              {m.noise && m.noise.sessions >= 3 && (
+                <p className="mc-muted" style={{ fontSize: 12 }}>
+                  Baseado em {m.noise.sessions} sessões de benchmark
+                </p>
+              )}
             </div>
           ) : (
-            <p className="mc-muted">Sem medição ainda — rode um benchmark para travar o sinal.</p>
+            <div className="mc-lock-onboard">
+              <p className="mc-muted mc-lock-onboard-title">Coletando histórico de medições</p>
+              <p className="mc-muted" style={{ marginTop: 6, fontSize: 12 }}>
+                Execute benchmarks para aumentar a precisão das recomendações.
+              </p>
+              <AxButton size="sm" variant="ghost" icon="play" onClick={() => nav("/performance")} style={{ marginTop: 10 }}>
+                Executar Benchmark
+              </AxButton>
+            </div>
           )}
         </AxCard>
       </div>
