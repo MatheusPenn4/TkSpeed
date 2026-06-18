@@ -17,9 +17,11 @@ src-tauri/gen
 src-tauri/target
 
 # Build artifacts / installers (generated, never versioned)
-*.exe
 *.msi
 *.zip
+# Executables — ignorar instaladores gerados, mas não binários bundled em resources/
+*.exe
+!resources/tools/*.exe
 
 # Local data / runtime
 *.db
