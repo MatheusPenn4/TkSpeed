@@ -63,7 +63,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: MatheusPenn4/site-tkspeed
-          token: ${{ secrets.SITE_REPO_TOKEN }}
+          token: ${{ secrets.SITE_TOKEN }}
           path: site
 
       - name: Atualizar update.json no site
