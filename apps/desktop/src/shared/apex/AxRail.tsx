@@ -45,7 +45,7 @@ export function AxRail({ onOpenCmdk }: { onOpenCmdk?: () => void }) {
     import("@tauri-apps/api/app")
       .then(({ getVersion }) => getVersion())
       .then(setVersion)
-      .catch(() => setVersion("dev"));
+      .catch(() => setVersion("0.1.0-beta.3"));
   }, []);
 
   return (
