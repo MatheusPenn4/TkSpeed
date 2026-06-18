@@ -52,13 +52,6 @@ jobs:
             target/release/bundle/nsis/TkSpeed_*_x64-setup.exe
             target/release/bundle/nsis/TkSpeed_*_x64-setup.exe.sig
 
-      - name: Ler assinatura gerada
-        id: sig
-        run: |
-          $v = "${{ steps.ver.outputs.v }}"
-          $sig = Get-Content "target/release/bundle/nsis/TkSpeed_${v}_x64-setup.exe.sig" -Raw
-          echo "value=$($sig.Trim())" >> $env:GITHUB_OUTPUT
-
       - name: Checkout site TkSpeed
         uses: actions/checkout@v4
         with:
@@ -69,7 +62,8 @@ jobs:
       - name: Atualizar update.json no site
         run: |
           $v = "${{ steps.ver.outputs.v }}"
-          $sig = "${{ steps.sig.outputs.value }}"
+          # Lê o .sig completo (arquivo multiline) sem passar por GitHub Output
+          $sig = (Get-Content "target/release/bundle/nsis/TkSpeed_${v}_x64-setup.exe.sig" -Raw).Trim()
           $date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
           $repo = "${{ github.repository }}"
           $url = "https://github.com/${repo}/releases/download/v${v}/TkSpeed_${v}_x64-setup.exe"
