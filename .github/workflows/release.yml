@@ -50,14 +50,13 @@ jobs:
           generate_release_notes: true
           files: |
             target/release/bundle/nsis/TkSpeed_*_x64-setup.exe
-            target/release/bundle/nsis/TkSpeed_*_x64-setup.nsis.zip
-            target/release/bundle/nsis/TkSpeed_*_x64-setup.nsis.zip.sig
+            target/release/bundle/nsis/TkSpeed_*_x64-setup.exe.sig
 
       - name: Ler assinatura gerada
         id: sig
         run: |
           $v = "${{ steps.ver.outputs.v }}"
-          $sig = Get-Content "target/release/bundle/nsis/TkSpeed_${v}_x64-setup.nsis.zip.sig" -Raw
+          $sig = Get-Content "target/release/bundle/nsis/TkSpeed_${v}_x64-setup.exe.sig" -Raw
           echo "value=$($sig.Trim())" >> $env:GITHUB_OUTPUT
 
       - name: Checkout site TkSpeed
@@ -73,7 +72,7 @@ jobs:
           $sig = "${{ steps.sig.outputs.value }}"
           $date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
           $repo = "${{ github.repository }}"
-          $url = "https://github.com/${repo}/releases/download/v${v}/TkSpeed_${v}_x64-setup.nsis.zip"
+          $url = "https://github.com/${repo}/releases/download/v${v}/TkSpeed_${v}_x64-setup.exe"
           $json = Get-Content "site/public/update.json" | ConvertFrom-Json
           $json.version = $v
           $json.pub_date = $date
