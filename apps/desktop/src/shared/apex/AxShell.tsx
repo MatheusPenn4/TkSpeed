@@ -5,6 +5,7 @@ import { isTauri } from "@/shared/lib/tauri";
 import { AxRail } from "./AxRail";
 import { AxCommandPalette, useCmdkHotkey, type AxCommand } from "./AxCommandPalette";
 import { SplashV3 } from "./SplashV3";
+import { UpdateChecker } from "../../features/updater/UpdateChecker";
 
 async function windowAction(action: "min" | "max" | "close") {
   if (!isTauri()) return;
@@ -63,6 +64,7 @@ export function AxShell({ children }: { children: ReactNode }) {
       </div>
       <AxCommandPalette open={cmdkOpen} onClose={() => setCmdkOpen(false)} commands={commands} />
       {booting && <SplashV3 />}
+      <UpdateChecker />
     </div>
   );
 }

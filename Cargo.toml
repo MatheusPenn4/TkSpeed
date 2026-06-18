@@ -31,6 +31,8 @@ tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "macros", "migrate"] }
 ts-rs = "9"
 async-trait = "0.1"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 [workspace.dependencies.windows]
 version = "0.58"

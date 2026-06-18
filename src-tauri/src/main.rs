@@ -18,6 +18,8 @@ fn main() {
     let _log_guard = init_logging();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -49,12 +51,15 @@ fn main() {
             bridge::protection_apply_demo,
             bridge::protection_rollback,
             bridge::protection_selftest,
+            bridge::restore_point_create,
+            bridge::restore_point_delete,
             bridge::perf_run_benchmark,
             bridge::perf_list_sessions,
             bridge::perf_compare,
             bridge::perf_noise_floor,
             bridge::perf_capture_fps,
             bridge::perf_capture_fps_demo,
+            bridge::perf_latest_fps_session,
             bridge::perf_hardware_snapshot,
             bridge::perf_detect_bottleneck,
             bridge::system_capabilities,
@@ -66,6 +71,21 @@ fn main() {
             bridge::opt_disable_startup,
             bridge::advisor_recommendations,
             bridge::advisor_apply_profile,
+            bridge::detect_games,
+            bridge::boost_game,
+            bridge::restore_game_priority,
+            bridge::ram_flush_standby,
+            bridge::gpu_detect,
+            bridge::dns_flush,
+            bridge::detect_heavy_apps,
+            bridge::detect_installed_games,
+            bridge::game_assignments_list,
+            bridge::game_assignment_save,
+            bridge::game_assignment_delete,
+            bridge::game_run_record,
+            bridge::game_runs_list,
+            bridge::monitor_live_snapshot,
+            bridge::driver_health,
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o TkSpeed");

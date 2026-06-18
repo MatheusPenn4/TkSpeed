@@ -6,9 +6,10 @@ use tk_contracts::{
     BenchmarkResult, OptDecision, OptimizationInfo, OptimizationRunInfo, PerfComparison, PerfVerdict,
     StartupItem,
 };
-use crate::configs::ConfigRegistry;
+use crate::configs::{ConfigMeta, ConfigRegistry, ConfigRisk};
 use crate::evidence::{extract_primary_gain, EvidenceRepo};
 use crate::machine;
+use crate::profiles::executor::{build_action, ConfigAction};
 use tk_perflab::{build_noise_profile, compare, run_complete, run_cpu, run_io, run_ram};
 use tk_platform_win::registry;
 use tk_rollback::{apply_actions, verify_actions, ProtectionService, ReversibleAction};
@@ -54,8 +55,27 @@ impl Engine {
     }
 
     /// Executa o loop completo para uma otimização e devolve o registro com evidência.
+    ///
+    /// Resolve o `id` em dois lugares: primeiro no catálogo (catalog.rs) e, se não
+    /// encontrar, no ConfigRegistry (configs/registry.rs). Sem esse fallback, configs
+    /// recomendadas pelo advisor (ex.: "Plano de Energia — Balanceado") chegavam ao
+    /// engine como id puro e falhavam com "Otimização não encontrada" — UX-004.
     pub async fn run(&self, id: &str) -> Result<OptimizationRunInfo, String> {
-        let opt = catalog::get(id).ok_or_else(|| "Otimização não encontrada".to_string())?;
+        if let Some(opt) = catalog::get(id) {
+            return self.run_catalog(id, opt).await;
+        }
+        if let Some(cfg) = ConfigRegistry::new().find(id) {
+            return self.run_config(id, cfg.meta()).await;
+        }
+        Err("Otimização não encontrada".to_string())
+    }
+
+    /// Caminho do catálogo (catalog.rs): plan() → snapshot → validação por suite.
+    async fn run_catalog(
+        &self,
+        id: &str,
+        opt: Box<dyn catalog::Optimization>,
+    ) -> Result<OptimizationRunInfo, String> {
         let meta = opt.meta();
 
         // plan + snapshot (sem snapshot → não aplica)
@@ -73,6 +93,41 @@ impl Engine {
             Validation::SpaceFreed => self.run_space_freed(id, &meta, snapshot_id, &actions, &fp).await,
             Validation::Manual => self.run_manual(id, &meta, snapshot_id, &actions, &fp).await,
         }
+    }
+
+    /// Caminho do ConfigRegistry: converte a config em ReversibleAction via o
+    /// executor e aplica pelo mesmo pipeline reversível (snapshot → aplica → verifica).
+    /// Configs ainda não suportadas pelo executor devolvem o MOTIVO real
+    /// (ex.: "requer chave HKLM…") — nunca "Otimização não encontrada".
+    async fn run_config(&self, id: &str, m: &ConfigMeta) -> Result<OptimizationRunInfo, String> {
+        let action = match build_action(id)? {
+            ConfigAction::Executable(a) => a,
+            ConfigAction::Unsupported { reason } => return Err(reason.to_string()),
+        };
+        let risk = match m.risk {
+            ConfigRisk::Safe => "Safe",
+            ConfigRisk::Moderate => "Moderate",
+            ConfigRisk::Advanced => "Advanced",
+        };
+        let meta = OptimizationInfo {
+            id: m.id.into(),
+            name: m.name.into(),
+            description: m.description.into(),
+            category: m.category.as_str().into(),
+            risk: risk.into(),
+            expected_impact: m.description.into(),
+            requires_elevation: m.requires_elevation,
+            requires_reboot: m.requires_reboot,
+        };
+        let actions = vec![action];
+        let fp = machine::fingerprint();
+        let snapshot_id = self
+            .protection()
+            .create_snapshot(&format!("optimize:{id}"), &actions, Some(&fp))
+            .await
+            .map_err(|e| e.to_string())?;
+        self.audit().log("user", "optimize.intent", &format!("{{\"id\":\"{id}\"}}")).await.ok();
+        self.run_manual(id, &meta, snapshot_id, &actions, &fp).await
     }
 
     /// Caminho com benchmark antes/depois + Confidence Engine.

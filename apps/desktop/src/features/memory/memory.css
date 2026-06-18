@@ -1,0 +1,429 @@
+/* Memória — V5.2 Premium. Apex Design Tokens. */
+
+.mem {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: var(--ax-content-max);
+  margin: 0 auto;
+}
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.mem-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.mem-head h1 {
+  font: 600 22px/1.2 var(--ax-font-display);
+  color: var(--ink-hi);
+  margin: 0 0 4px;
+}
+.mem-head p {
+  font-size: 13px;
+  color: var(--ink-mid);
+}
+.mem-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ok) 60%, transparent);
+  flex-shrink: 0;
+  margin-top: 10px;
+  animation: mem-pulse 2.4s ease-in-out infinite;
+}
+@keyframes mem-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+/* ── Live panel ──────────────────────────────────────────────────── */
+.mem-panel {
+  padding: 20px 22px;
+  border-radius: var(--ax-r-lg);
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.mem-panel-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Pressure badge */
+.mem-pressure {
+  font: 600 11px/1 var(--ax-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--raised);
+  border: 1px solid var(--hairline);
+  color: var(--ink-mid);
+}
+.mem-pressure-critico { color: var(--risk);   border-color: color-mix(in srgb, var(--risk) 40%, transparent);   background: color-mix(in srgb, var(--risk) 8%, var(--raised)); }
+.mem-pressure-alto    { color: var(--warn);   border-color: color-mix(in srgb, var(--warn) 40%, transparent);   background: color-mix(in srgb, var(--warn) 6%, var(--raised)); }
+.mem-pressure-medio   { color: var(--signal); border-color: color-mix(in srgb, var(--signal) 35%, transparent); background: color-mix(in srgb, var(--signal) 6%, var(--raised)); }
+.mem-pressure-ok      { color: var(--ok);     border-color: color-mix(in srgb, var(--ok) 35%, transparent);     background: color-mix(in srgb, var(--ok) 6%, var(--raised)); }
+
+/* Stats grid */
+.mem-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 560px) {
+  .mem-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+.mem-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mem-stat-lbl {
+  font: 600 10px/1 var(--ax-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--ink-low);
+}
+.mem-stat-val {
+  font: 600 28px/1.1 var(--ax-font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-hi);
+}
+.mem-stat-unit {
+  font-size: 12px;
+  color: var(--ink-low);
+  font-weight: 500;
+}
+.mem-stat-used .mem-stat-val { color: var(--signal); }
+.mem-stat-free .mem-stat-val { color: var(--ok); }
+
+/* Pressure-colored % */
+.mem-pct-critico { color: var(--risk)   !important; }
+.mem-pct-alto    { color: var(--warn)   !important; }
+.mem-pct-medio   { color: var(--signal) !important; }
+.mem-pct-ok      { color: var(--ok)     !important; }
+
+/* Usage bar */
+.mem-bar-wrap { width: 100%; }
+.mem-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: var(--ax-r-pill);
+  background: var(--machined);
+  overflow: hidden;
+}
+.mem-bar-fill {
+  height: 100%;
+  border-radius: var(--ax-r-pill);
+  background: var(--signal);
+  transition: width 0.7s var(--ax-ease);
+}
+.mem-bar-fill-critico { background: var(--risk); }
+.mem-bar-fill-alto    { background: var(--warn); }
+.mem-bar-fill-medio   { background: var(--signal); }
+.mem-bar-fill-ok      { background: var(--ok); }
+
+.mem-unavail {
+  font-size: 13px;
+  color: var(--ink-mid);
+  padding-top: 4px;
+}
+
+/* ── Flush card ──────────────────────────────────────────────────── */
+.mem-flush-card {
+  padding: 20px 22px;
+  border-radius: var(--ax-r-lg);
+  background: var(--panel);
+  background-image: var(--piano-sheen);
+  border: 1px solid var(--hairline);
+}
+.mem-flush-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.mem-flush-texts {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mem-flush-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mem-flush-title-row strong {
+  font: 600 15px/1.3 var(--ax-font-ui);
+  color: var(--ink-hi);
+}
+.mem-flush-chip {
+  font: 600 10px/1 var(--ax-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--machined);
+  border: 1px solid var(--hairline);
+  color: var(--ink-low);
+}
+.mem-flush-desc {
+  font-size: 13px;
+  color: var(--ink-mid);
+  line-height: 1.55;
+  margin: 0;
+}
+.mem-flush-note {
+  font-size: 12px;
+  color: var(--ink-low);
+  margin: 0;
+}
+.mem-flush-cta {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* ── Result ──────────────────────────────────────────────────────── */
+.mem-result {
+  padding: 18px 22px;
+  border-radius: var(--ax-r-lg);
+  border: 1px solid var(--hairline);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.mem-result-ok  {
+  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+  background:   color-mix(in srgb, var(--ok) 5%, var(--panel));
+}
+.mem-result-err {
+  border-color: color-mix(in srgb, var(--risk) 30%, transparent);
+  background:   color-mix(in srgb, var(--risk) 5%, var(--panel));
+}
+.mem-result-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mem-result-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ok) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--ok);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.mem-result-header strong {
+  font: 600 14px/1.2 var(--ax-font-ui);
+  color: var(--ink-hi);
+}
+
+/* Delta row */
+.mem-deltas {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.mem-delta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mem-delta-lbl {
+  font: 600 10px/1 var(--ax-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--ink-low);
+}
+.mem-delta-val {
+  font: 600 22px/1 var(--ax-font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-hi);
+}
+.mem-delta-unit {
+  font-size: 12px;
+  color: var(--ink-low);
+}
+.mem-delta-freed .mem-delta-val { color: var(--ok); }
+.mem-delta-arrow { font-size: 16px; color: var(--ink-faint); }
+
+.mem-result-err-msg {
+  font-size: 13px;
+  color: var(--risk);
+  margin: 0;
+}
+
+/* ── V9 Memory Engineering Center ────────────────────────────────────────── */
+
+.mem-arc-wrap {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  flex-shrink: 0;
+}
+.mem-arc-svg  { display: block; width: 100%; height: 100%; }
+.mem-arc-inner {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding-bottom: 16px;
+  gap: 0;
+  pointer-events: none;
+}
+.mem-arc-pct {
+  font: 700 40px/1 var(--ax-font-data);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -2px;
+  color: var(--ink-hi);
+}
+.mem-arc-unit {
+  font: 500 11px/1 var(--ax-font-data);
+  color: var(--ink-low);
+  margin-top: 2px;
+}
+.mem-arc-label {
+  font: 600 9px/1 var(--ax-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--ink-low);
+  margin-top: 6px;
+}
+
+/* Engine: 2-column layout */
+.mem-engine {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 20px 22px;
+  border-radius: var(--ax-r-lg);
+  background: var(--panel);
+  background-image: var(--piano-sheen);
+  border: 1px solid var(--hairline);
+}
+
+.mem-engine-arc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-right: 22px;
+  border-right: 1px solid var(--hairline);
+}
+
+.mem-engine-data {
+  flex: 1;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mem-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--hairline);
+  border-radius: var(--ax-r-sm);
+  overflow: hidden;
+}
+
+.mem-kpi-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  background: var(--panel);
+}
+
+.mem-kpi-cell-lbl {
+  font: 600 9.5px/1 var(--ax-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--ink-low);
+}
+
+.mem-kpi-cell-val {
+  font: 700 22px/1.1 var(--ax-font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-hi);
+}
+
+.mem-kpi-cell-unit {
+  font-size: 11px;
+  color: var(--ink-low);
+}
+
+.mem-kpi-cell-used .mem-kpi-cell-val { color: var(--signal); }
+.mem-kpi-cell-free .mem-kpi-cell-val { color: var(--ok); }
+.mem-kpi-cell-pct-critico .mem-kpi-cell-val { color: var(--risk); }
+.mem-kpi-cell-pct-alto    .mem-kpi-cell-val { color: var(--warn); }
+.mem-kpi-cell-pct-medio   .mem-kpi-cell-val { color: var(--signal); }
+.mem-kpi-cell-pct-ok      .mem-kpi-cell-val { color: var(--ok); }
+
+/* Usage bar */
+.mem-usage-bar-wrap { display: flex; flex-direction: column; gap: 5px; }
+
+.mem-usage-bar {
+  height: 4px;
+  border-radius: var(--ax-r-pill);
+  background: var(--machined);
+  overflow: hidden;
+}
+
+.mem-usage-fill {
+  height: 100%;
+  border-radius: var(--ax-r-pill);
+  transition: width 0.7s var(--ax-ease);
+  background: var(--signal);
+}
+.mem-usage-fill-critico { background: var(--risk); }
+.mem-usage-fill-alto    { background: var(--warn); }
+.mem-usage-fill-medio   { background: var(--signal); }
+.mem-usage-fill-ok      { background: var(--ok); }
+
+.mem-usage-labels {
+  display: flex;
+  justify-content: space-between;
+  font: 400 11px/1 var(--ax-font-ui);
+  color: var(--ink-low);
+}
+
+.mem-engine-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+@media (max-width: 680px) {
+  .mem-engine { flex-direction: column; }
+  .mem-engine-arc {
+    border-right: none; padding-right: 0;
+    border-bottom: 1px solid var(--hairline); padding-bottom: 16px;
+    flex-direction: row; gap: 20px;
+  }
+  .mem-engine-data { padding-left: 0; padding-top: 14px; }
+  .mem-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}

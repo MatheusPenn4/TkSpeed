@@ -5,15 +5,16 @@
    antigas continuam no Aurora até serem migradas.
    ============================================================================ */
 :root {
-  /* ---- Substrato grafite anodizado (profundidade por camadas) ---- */
-  --void: #08090c;
-  --base: #0d0f14;
-  --panel: #13161d;
-  --raised: #1a1e27;
-  --machined: #222732;
-  --hairline: rgba(255, 255, 255, 0.07);
-  --hairline-strong: rgba(255, 255, 255, 0.13);
-  --edge-hi: rgba(255, 255, 255, 0.06); /* inset highlight "usinado" no topo */
+  /* ---- Substrato Black Piano (profundidade por camadas) ---- */
+  --void: #030303;
+  --base: #050505;
+  --panel: #070707;
+  --raised: #0a0a0a;
+  --machined: #101010;
+  --hairline: rgba(255, 255, 255, 0.04);
+  --hairline-strong: rgba(255, 255, 255, 0.06);
+  --edge-hi: rgba(255, 255, 255, 0.04); /* reflexo superior "vidro polido" */
+  --piano-sheen: linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0) 100%);
 
   /* ---- Tinta ---- */
   --ink-hi: #f2f5fa;
@@ -80,7 +81,7 @@
 
 /* ============================ Superfícies / Card ============================ */
 .ax-surface {
-  background: var(--raised);
+  background: var(--piano-sheen), var(--panel);
   border: 1px solid var(--hairline);
   border-radius: var(--ax-r-lg);
   box-shadow: var(--ax-elev-1);
@@ -102,12 +103,12 @@
   border: 1px solid var(--hairline-strong); background: var(--machined); color: var(--ink-hi);
   cursor: pointer; transition: all var(--ax-t-fast) var(--ax-ease); white-space: nowrap;
 }
-.ax-btn:hover { border-color: var(--ink-low); background: #262c38; }
+.ax-btn:hover { border-color: var(--hairline-strong); background: rgba(255,255,255,0.05); }
 .ax-btn:active { transform: scale(0.99); }
 .ax-btn:focus-visible { outline: none; box-shadow: var(--ax-focus); }
 .ax-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 .ax-btn-primary { background: var(--signal); color: var(--signal-ink); border: 0; }
-.ax-btn-primary:hover { background: #6cf6da; box-shadow: 0 0 24px var(--mint-dim); }
+.ax-btn-primary:hover { background: #6cf6da; box-shadow: 0 0 12px var(--mint-dim); }
 .ax-btn-ghost { background: transparent; border-color: var(--hairline); }
 .ax-btn-ghost:hover { background: var(--machined); }
 .ax-btn-sm { height: 30px; padding: 0 12px; font-size: 12px; }
@@ -159,7 +160,7 @@
 /* ============================ Modal ============================ */
 .ax-modal-overlay {
   position: fixed; inset: 0; z-index: var(--ax-z-modal);
-  background: rgba(8, 9, 12, 0.66); backdrop-filter: blur(8px);
+  background: rgba(3, 3, 3, 0.78); backdrop-filter: blur(8px);
   display: grid; place-items: center; padding: 24px; animation: ax-fade var(--ax-t-fast) var(--ax-ease);
 }
 .ax-modal {
@@ -201,13 +202,13 @@
 /* ============================ Rail (navegação) ============================ */
 .ax-rail { width: var(--ax-rail-w); flex-shrink: 0; display: flex; flex-direction: column; gap: 2px; padding: 16px 12px; border-right: 1px solid var(--hairline); background: var(--base); overflow-y: auto; }
 .ax-rail-brand { display: flex; align-items: center; gap: 10px; padding: 8px 10px 16px; }
-.ax-rail-logo { width: 22px; height: 22px; border-radius: 6px; background: var(--signal-grad); box-shadow: 0 0 16px var(--mint-dim); flex-shrink: 0; }
+.ax-rail-logo { width: 22px; height: 22px; border-radius: 6px; background: var(--signal-grad); box-shadow: 0 0 8px var(--mint-dim); flex-shrink: 0; }
 .ax-rail-brand b { font: 600 16px/1 var(--ax-font-display); letter-spacing: 0.3px; color: var(--ink-hi); }
 .ax-rail-group { font: 600 10px/1.2 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1.5px; color: var(--ink-faint); padding: 16px 10px 6px; }
 .ax-nav { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--ax-r-md); color: var(--ink-mid); text-decoration: none; font: 500 13px/1 var(--ax-font-ui); position: relative; transition: all var(--ax-t-fast) var(--ax-ease); white-space: nowrap; }
 .ax-nav:hover { background: var(--panel); color: var(--ink-hi); }
 .ax-nav.active { background: var(--panel); color: var(--ink-hi); }
-.ax-nav.active::before { content: ""; position: absolute; left: 0; top: 22%; bottom: 22%; width: 3px; border-radius: var(--ax-r-pill); background: var(--signal); box-shadow: 0 0 10px var(--signal); }
+.ax-nav.active::before { content: ""; position: absolute; left: 0; top: 22%; bottom: 22%; width: 3px; border-radius: var(--ax-r-pill); background: var(--signal); box-shadow: 0 0 8px var(--signal); }
 .ax-nav .ax-nav-ico { color: var(--ink-low); display: inline-flex; flex-shrink: 0; }
 .ax-nav.active .ax-nav-ico { color: var(--signal); }
 .ax-nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -218,7 +219,7 @@
 .ax-kbd { font: 600 10px/1 var(--ax-font-data); padding: 3px 6px; border-radius: var(--ax-r-xs); background: var(--machined); border: 1px solid var(--hairline); color: var(--ink-mid); margin-left: auto; }
 
 /* ============================ Command Palette ============================ */
-.ax-cmdk-overlay { position: fixed; inset: 0; z-index: var(--ax-z-cmdk); background: rgba(8, 9, 12, 0.55); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: flex-start; padding-top: 14vh; animation: ax-fade var(--ax-t-fast) var(--ax-ease); }
+.ax-cmdk-overlay { position: fixed; inset: 0; z-index: var(--ax-z-cmdk); background: rgba(3, 3, 3, 0.65); backdrop-filter: blur(6px); display: flex; justify-content: center; align-items: flex-start; padding-top: 14vh; animation: ax-fade var(--ax-t-fast) var(--ax-ease); }
 .ax-cmdk { width: 100%; max-width: 560px; background: var(--panel); border: 1px solid var(--hairline-strong); border-radius: var(--ax-r-lg); box-shadow: var(--ax-elev-float); overflow: hidden; animation: ax-rise var(--ax-t-base) var(--ax-ease); }
 .ax-cmdk-input-row { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--hairline); }
 .ax-cmdk-input { flex: 1; background: transparent; border: 0; outline: none; color: var(--ink-hi); font: 400 16px/1 var(--ax-font-ui); }
@@ -318,8 +319,8 @@
 /* Símbolo único — sem BrandLogo */
 .ax-splash-sym {
   position: relative; z-index: 1;
-  filter: drop-shadow(0 0 20px rgba(88, 242, 210, 0.40))
-          drop-shadow(0 0 60px rgba(57, 199, 255, 0.15));
+  filter: drop-shadow(0 0 12px rgba(88, 242, 210, 0.38))
+          drop-shadow(0 0 16px rgba(57, 199, 255, 0.08));
   animation: ax-spl-sym 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -392,4 +393,22 @@
 @keyframes ax-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ax-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes ax-shimmer { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
-@keyframes ax-lock-pulse { 0%, 100% { box-shadow: 0 0 0 rgba(88, 242, 210, 0); } 50% { box-shadow: 0 0 16px var(--mint-dim); } }
+@keyframes ax-lock-pulse { 0%, 100% { box-shadow: 0 0 0 rgba(88, 242, 210, 0); } 50% { box-shadow: 0 0 8px var(--mint-dim); } }
+
+/* ── V10 — Glow depth tokens (Black Piano — elegantes, não exagerados) ─────── */
+:root {
+  --glow-ok:     0 0 12px rgba(70,  200, 138, 0.18);
+  --glow-signal: 0 0 12px rgba(88,  242, 210, 0.18);
+  --glow-ion:    0 0 12px rgba(57,  199, 255, 0.18);
+  --glow-warn:   0 0 12px rgba(232, 184,  75, 0.18);
+  --glow-risk:   0 0 12px rgba(239, 110, 110, 0.18);
+}
+
+/* Arc instrument — shared base for score/memory arcs */
+.ax-arc-wrap { position: relative; flex-shrink: 0; }
+.ax-arc-svg  { display: block; width: 100%; height: 100%; }
+.ax-arc-inner {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}

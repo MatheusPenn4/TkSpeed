@@ -1,0 +1,687 @@
+/* ── Live Monitor — V3 Apex Design System ─────────────────────────────────── */
+
+.lm-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.lm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.lm-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink-hi);
+  margin: 0 0 4px;
+  letter-spacing: -0.3px;
+}
+
+.lm-header p {
+  font-size: 13px;
+  color: var(--ink-mid);
+  margin: 0;
+}
+
+.lm-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Error / Unavailable ─────────────────────────────────────────────────── */
+
+.lm-error {
+  background: color-mix(in srgb, var(--risk) 10%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--risk) 30%, transparent);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--ink-hi);
+}
+
+.lm-unavailable {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-mid);
+}
+
+/* ── Health Card ─────────────────────────────────────────────────────────── */
+
+.lm-health-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 26px;
+  border-radius: 18px;
+  border: 1px solid var(--hairline);
+  background: var(--panel);
+  transition: border-color 0.25s, background 0.25s;
+}
+
+.lm-health-excelente { border-color: color-mix(in srgb, var(--ok) 35%, transparent); background: color-mix(in srgb, var(--ok) 5%, var(--panel)); }
+.lm-health-bom       { border-color: color-mix(in srgb, var(--signal) 35%, transparent); background: color-mix(in srgb, var(--signal) 5%, var(--panel)); }
+.lm-health-atencao   { border-color: color-mix(in srgb, var(--warn) 35%, transparent); background: color-mix(in srgb, var(--warn) 5%, var(--panel)); }
+.lm-health-critico   { border-color: color-mix(in srgb, var(--risk) 35%, transparent); background: color-mix(in srgb, var(--risk) 5%, var(--panel)); }
+
+.lm-health-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: var(--raised);
+  color: var(--ink-hi);
+}
+
+.lm-health-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lm-health-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lm-health-bottleneck {
+  font-size: 12px;
+  color: var(--ink-mid);
+}
+
+.lm-health-headline {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-hi);
+  line-height: 1.35;
+}
+
+.lm-health-detail {
+  font-size: 13px;
+  color: var(--ink-mid);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+
+.lm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lm-section-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--ink-low);
+  padding: 0 2px;
+}
+
+/* ── Gauges ──────────────────────────────────────────────────────────────── */
+
+.lm-gauges-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lm-gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 14px 18px 10px;
+  min-width: 96px;
+}
+
+.lm-gauge-svg {
+  width: 72px;
+  height: 72px;
+}
+
+.lm-gauge-pct {
+  font-size: 14px;
+  font-weight: 600;
+  fill: var(--ink-hi);
+  font-family: var(--ax-font-mono, monospace);
+}
+
+.lm-gauge-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-hi);
+}
+
+.lm-gauge-sub {
+  font-size: 11px;
+  color: var(--ink-low);
+  font-family: var(--ax-font-mono, monospace);
+  white-space: nowrap;
+}
+
+/* ── Temp / VRAM mini-cards ──────────────────────────────────────────────── */
+
+.lm-temp-card,
+.lm-vram-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 14px 18px 10px;
+  min-width: 80px;
+}
+
+.lm-temp-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink-hi);
+  font-family: var(--ax-font-mono, monospace);
+  line-height: 1;
+}
+
+.lm-temp-label,
+.lm-vram-label {
+  font-size: 11px;
+  color: var(--ink-low);
+  text-align: center;
+}
+
+.lm-vram-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-hi);
+  font-family: var(--ax-font-mono, monospace);
+  white-space: nowrap;
+}
+
+.lm-temp-bar {
+  width: 60px;
+  height: 4px;
+  background: var(--hairline);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.lm-temp-fill {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+  border-radius: 2px;
+  transition: width 0.4s ease, background 0.4s;
+}
+
+.lm-temp-fill.warm { background: var(--warn); }
+.lm-temp-fill.hot  { background: var(--risk); }
+
+/* ── Charts ──────────────────────────────────────────────────────────────── */
+
+.lm-window-tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.lm-window-tab {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--hairline);
+  background: var(--raised);
+  color: var(--ink-mid);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.lm-window-tab.active {
+  border-color: var(--signal);
+  color: var(--signal);
+  background: color-mix(in srgb, var(--signal) 8%, var(--raised));
+}
+
+.lm-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.lm-chart-card {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 12px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lm-chart-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-mid);
+}
+
+.lm-chart-hd strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-hi);
+  font-family: var(--ax-font-mono, monospace);
+}
+.lm-chart-hd-r { display: flex; align-items: center; gap: 8px; }
+.lm-trend {
+  font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 999px;
+  border: 1px solid var(--hairline); background: var(--raised); white-space: nowrap;
+}
+.lm-trend-up     { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+.lm-trend-down   { color: var(--ok);   border-color: color-mix(in srgb, var(--ok) 30%, transparent); }
+.lm-trend-stable { color: var(--ink-low); }
+
+.lm-sparkline {
+  width: 100%;
+  height: 48px;
+  display: block;
+}
+
+.lm-spark-empty {
+  height: 48px;
+  background: var(--raised);
+  border-radius: 4px;
+}
+
+/* ── Game Context ─────────────────────────────────────────────────────────── */
+
+.lm-game-ctx {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.lm-game-ctx-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.lm-game-ctx-info {
+  flex: 1;
+}
+
+.lm-game-ctx-info strong {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-hi);
+  display: block;
+}
+
+.lm-game-ctx-info p {
+  font-size: 11px;
+  color: var(--ink-low);
+  margin: 0;
+  font-family: var(--ax-font-mono, monospace);
+}
+
+/* ── Interference apps ───────────────────────────────────────────────────── */
+
+.lm-app-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lm-app-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.lm-app-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lm-app-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-hi);
+}
+
+.lm-app-desc {
+  font-size: 12px;
+  color: var(--ink-mid);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── Saúde dos Drivers ───────────────────────────────────────────────────── */
+
+.lm-driver-hint {
+  font-size: 12px;
+  color: var(--ink-low);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.lm-driver-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.lm-driver-card {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lm-driver-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lm-driver-icon {
+  font-size: 16px;
+}
+
+.lm-driver-cat {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-hi);
+  flex: 1;
+}
+
+.lm-driver-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lm-driver-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lm-driver-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-hi);
+  line-height: 1.3;
+}
+
+.lm-driver-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 11px;
+  color: var(--ink-mid);
+}
+
+.lm-driver-mono {
+  font-family: var(--ax-font-mono, monospace);
+  color: var(--ink-low);
+}
+
+.lm-driver-empty {
+  font-size: 12px;
+  color: var(--ink-low);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* -- Game Hero � V7.0 ------------------------------------------------------ */
+
+.lm-game-hero {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-left: 3px solid var(--ion);
+}
+
+.lm-game-hero-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.lm-game-hero-icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.lm-game-hero-id {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.lm-game-hero-name {
+  font: 700 18px/1 var(--ax-font-ui);
+  color: var(--ink-hi);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lm-game-hero-exe {
+  font: 400 11px/1 var(--ax-font-mono, monospace);
+  color: var(--ink-low);
+}
+
+.lm-game-hero-badges {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.lm-live-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 0 rgba(70,200,138,0.5);
+  animation: lm-pulse 2s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes lm-pulse {
+  0%   { box-shadow: 0 0 0 0    rgba(70,200,138,0.5); }
+  70%  { box-shadow: 0 0 0 8px  rgba(70,200,138,0); }
+  100% { box-shadow: 0 0 0 0    rgba(70,200,138,0); }
+}
+
+.lm-live-label {
+  font: 600 10px/1 var(--ax-font-ui);
+  color: var(--ok);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.lm-fps-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+.lm-fps-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 0 28px;
+}
+
+.lm-fps-stat:first-child {
+  padding-left: 0;
+}
+
+.lm-fps-val {
+  font: 700 42px/1 var(--ax-font-data);
+  letter-spacing: -2px;
+  color: var(--ink-hi);
+}
+
+.lm-fps-key {
+  font: 500 11px/1 var(--ax-font-ui);
+  color: var(--ink-low);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.lm-fps-sep {
+  width: 1px;
+  height: 44px;
+  background: var(--hairline);
+  flex-shrink: 0;
+}
+
+.lm-fps-note {
+  font: 400 11px/1 var(--ax-font-ui);
+  color: var(--ink-faint);
+  flex-basis: 100%;
+  margin-top: 4px;
+}
+
+.lm-fps-pending {
+  font: 400 13px/1.5 var(--ax-font-ui);
+  color: var(--ink-low);
+  margin: 0;
+}
+
+/* -- Telemetry Bar � V8 laboratory ---------------------------------------- */
+
+.lm-tele-hd {
+  margin-bottom: 4px;
+}
+
+.lm-tele-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.lm-tele-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.lm-tbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lm-tbar-hd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lm-tbar-label {
+  font: 600 12px/1 var(--ax-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--ink-mid);
+  flex-shrink: 0;
+}
+
+.lm-tbar-right {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.lm-tbar-val {
+  font: 700 36px/1 var(--ax-font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-hi);
+  letter-spacing: -1px;
+}
+
+.lm-tbar-val small {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0;
+  margin-left: 1px;
+  color: var(--ink-low);
+}
+
+.lm-tbar-sub {
+  font: 400 11px/1 var(--ax-font-mono, monospace);
+  color: var(--ink-low);
+}
+
+.lm-tbar-track {
+  height: 8px;
+  border-radius: var(--ax-r-pill);
+  background: var(--machined);
+  overflow: hidden;
+}
+
+.lm-tbar-fill {
+  height: 100%;
+  border-radius: var(--ax-r-pill);
+  transition: width 0.6s var(--ax-ease);
+}

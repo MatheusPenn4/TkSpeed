@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { MissionControlPage } from "./features/mission/MissionControlPage";
 import { PerformanceLabPage } from "./features/perflab/PerformanceLabPage";
@@ -8,6 +8,10 @@ import { HistoryPage } from "./features/history/HistoryPage";
 import { ResultsPage } from "./features/results/ResultsPage";
 import { StartupManagerPage } from "./features/startup/StartupManagerPage";
 import { ComingSoon } from "./app/shell/ComingSoon";
+import { MemoryManagerPage } from "./features/memory/MemoryManagerPage";
+import { GameCenterPage as GameProfilesPage } from "./features/games/GameCenterPage";
+import { LiveMonitorPage } from "./features/monitor/LiveMonitorPage";
+import { RestorePointsPage } from "./features/snapshots/RestorePointsPage";
 import { ErrorBoundary, FatalErrorView } from "./shared/components/ErrorBoundary";
 import { ToastProvider } from "./shared/components/Toast";
 import { AxShell, AxToastProvider } from "./shared/apex";
@@ -39,8 +43,33 @@ function useBootstrapError(): string | null {
   return err;
 }
 
+function useAutoFpsCapture() {
+  const capturingRef = useRef(false);
+  useEffect(() => {
+    if (!isTauri()) return;
+    async function check() {
+      if (capturingRef.current) return;
+      try {
+        const snap = await invokeCmd<{ running_games: Array<{ name: string; exe: string }> }>("monitor_live_snapshot");
+        if (snap.running_games.length === 0) return;
+        const latest = await invokeCmd<{ ts: number } | null>("perf_latest_fps_session");
+        const TEN_MIN = 10 * 60 * 1000;
+        if (latest && Date.now() - latest.ts < TEN_MIN) return;
+        capturingRef.current = true;
+        const game = snap.running_games[0];
+        invokeCmd("perf_capture_fps", { target: game.name, durationSecs: 60 })
+          .catch(() => {})
+          .finally(() => { capturingRef.current = false; });
+      } catch { /* silencioso */ }
+    }
+    const id = setInterval(check, 10_000);
+    return () => clearInterval(id);
+  }, []);
+}
+
 export function App() {
   const bootError = useBootstrapError();
+  useAutoFpsCapture();
 
   return (
     <ErrorBoundary>
@@ -59,14 +88,11 @@ export function App() {
                   <Route path="/hub" element={<OptimizationCenterPage />} />
                   <Route path="/rollback" element={<RollbackCenterPage />} />
                   <Route path="/history" element={<HistoryPage />} />
-                  {/* Sem backend dedicado ainda → shell premium "Em breve". */}
-                  <Route path="/game" element={<ComingSoon title="Otimização para Jogos" icon="game" />} />
+                  <Route path="/game" element={<GameProfilesPage />} />
+                  <Route path="/monitor" element={<LiveMonitorPage />} />
                   <Route path="/startup" element={<StartupManagerPage />} />
-                  <Route path="/memory" element={<ComingSoon title="Gerenciador de Memória" icon="memory" />} />
-                  <Route
-                    path="/snapshots"
-                    element={<ComingSoon title="Pontos de Restauração" icon="snapshot" description="Os pontos de restauração já estão disponíveis na Central de Restauração." />}
-                  />
+                  <Route path="/memory" element={<MemoryManagerPage />} />
+                  <Route path="/snapshots" element={<RestorePointsPage />} />
                   <Route path="/results" element={<ResultsPage />} />
                   <Route path="/reports" element={<ComingSoon title="Relatórios" icon="reports" />} />
                   <Route path="/settings" element={<ComingSoon title="Configurações" icon="settings" />} />

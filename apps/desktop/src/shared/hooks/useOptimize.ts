@@ -10,6 +10,7 @@ export type OptimizationInfo = {
   risk: string; // Safe | Moderate | Advanced | Experimental
   expected_impact: string;
   requires_elevation: boolean;
+  requires_reboot: boolean;
 };
 
 export type OptDecision = "Keep" | "Revert" | "Inconclusive";
@@ -40,6 +41,7 @@ export function useOptimize() {
   const [history, setHistory] = useState<OptimizationRunInfo[]>([]);
   const [running, setRunning] = useState<string | null>(null); // id em execução
   const [error, setError] = useState<string | null>(null);
+  const [errorMap, setErrorMap] = useState<Map<string, string>>(new Map());
 
   const refresh = useCallback(async () => {
     if (!isTauri()) return;
@@ -67,10 +69,13 @@ export function useOptimize() {
       setError(null);
       try {
         const r = await invokeCmd<OptimizationRunInfo>("opt_run", { id });
+        setErrorMap(prev => { const m = new Map(prev); m.delete(id); return m; });
         await refresh();
         return r;
       } catch (e) {
-        setError(fmtErr(e));
+        const msg = fmtErr(e);
+        setError(msg);
+        setErrorMap(prev => new Map(prev).set(id, msg));
         return null;
       } finally {
         setRunning(null);
@@ -115,5 +120,5 @@ export function useOptimize() {
     }
   }, []);
 
-  return { available: isTauri(), catalog, history, running, error, run, rollback, startupAnalysis, disableStartup, refresh };
+  return { available: isTauri(), catalog, history, running, error, errorMap, run, rollback, startupAnalysis, disableStartup, refresh };
 }

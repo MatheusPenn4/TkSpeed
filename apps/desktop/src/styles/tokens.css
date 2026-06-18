@@ -1,12 +1,12 @@
 /* TkSpeed · Design System "Aurora" — tokens (ver docs/06-DESIGN-SYSTEM.md) */
 :root {
-  /* superfícies */
-  --bg-base: #080b12;
-  --bg-elevated: #0e131d;
-  --bg-glass: rgba(255, 255, 255, 0.04);
-  --bg-glass-strong: rgba(255, 255, 255, 0.07);
-  --stroke: rgba(255, 255, 255, 0.08);
-  --stroke-strong: rgba(255, 255, 255, 0.14);
+  /* superfícies — Black Piano */
+  --bg-base: #030303;
+  --bg-elevated: #070707;
+  --bg-glass: rgba(255, 255, 255, 0.03);
+  --bg-glass-strong: rgba(255, 255, 255, 0.05);
+  --stroke: rgba(255, 255, 255, 0.04);
+  --stroke-strong: rgba(255, 255, 255, 0.06);
 
   /* marca */
   --primary: #00e5ff;
@@ -24,8 +24,8 @@
   --grad-primary: linear-gradient(135deg, #00e5ff 0%, #7b61ff 100%);
   --grad-health: linear-gradient(135deg, #00ff88 0%, #00e5ff 100%);
   --grad-risk: linear-gradient(135deg, #ffc857 0%, #ff4d4d 100%);
-  --glow-primary: 0 0 24px rgba(0, 229, 255, 0.35);
-  --glow-success: 0 0 24px rgba(0, 255, 136, 0.3);
+  --glow-primary: 0 0 12px rgba(0, 229, 255, 0.18);
+  --glow-success: 0 0 12px rgba(0, 255, 136, 0.18);
 
   /* raio */
   --r-sm: 8px;
@@ -54,8 +54,8 @@
   --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
 
   /* ───────── V2-0 (delta) — superfícies, foco, acento sóbrio, escala tipográfica ───────── */
-  --bg-sunken: #05070c;          /* poços / insets sob o painel */
-  --bg-raised: #141b28;          /* cards sólidos sobre painel (hierarquia) */
+  --bg-sunken: #030303;          /* poços / insets sob o painel */
+  --bg-raised: #0a0a0a;          /* cards sólidos sobre painel (hierarquia) */
   --success-ink: #34d399;        /* success sóbrio p/ texto/áreas (neon fica p/ glow pontual) */
   --shadow-focus: 0 0 0 3px rgba(0, 229, 255, 0.25); /* anel de foco (a11y) */
 

@@ -1,0 +1,399 @@
+/* ── Game Center — V3 Apex Design System ──────────────────────────────────── */
+
+.gc-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px 24px;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.gc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gc-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink-hi);
+  margin: 0 0 4px;
+  letter-spacing: -0.3px;
+}
+
+.gc-header p {
+  font-size: 13px;
+  color: var(--ink-mid);
+  margin: 0;
+}
+
+.gc-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── GPU bar ──────────────────────────────────────────────────────────────── */
+
+.gc-gpu-bar {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gc-gpu-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--ink-low);
+  white-space: nowrap;
+}
+
+.gc-gpu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gc-gpu-name {
+  font-size: 13px;
+  color: var(--ink-hi);
+}
+
+/* ── Profiles legend bar ─────────────────────────────────────────────────── */
+
+.gc-profiles-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: var(--raised);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+}
+
+.gc-profile-chip {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-mid);
+  background: var(--machined);
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+.gc-profile-desc {
+  font-size: 12px;
+  color: var(--ink-low);
+  margin-left: auto;
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+
+.gc-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gc-section-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--ink-low);
+  padding: 0 2px;
+}
+
+.gc-section-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-mid);
+  background: var(--machined);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 0 7px;
+}
+
+.gc-section-note { font-size: 11px; color: var(--ink-low); margin-left: 8px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+.gc-empty-running {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 28px 16px;
+  background: var(--panel);
+  border: 1px dashed var(--hairline-strong);
+  border-radius: 14px;
+  text-align: center;
+}
+.gc-empty-running-icon { font-size: 28px; opacity: .6; }
+.gc-empty-running strong { font-size: 14px; color: var(--ink-hi); }
+.gc-empty-running p { font-size: 12px; color: var(--ink-low); margin: 0; max-width: 360px; }
+
+/* ── V5.1 — Perfis (cards descritivos) ───────────────────────────────────── */
+.gc-profile-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.gc-profile-card {
+  padding: 12px 14px; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--hairline);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.gc-profile-card-hd { display: flex; align-items: center; gap: 8px; }
+.gc-profile-card-icon { font-size: 16px; }
+.gc-profile-card-label { font-size: 13px; font-weight: 600; color: var(--ink-hi); }
+.gc-profile-card-desc { font-size: 12px; color: var(--ink-mid); line-height: 1.45; margin: 0; }
+.gc-profile-competitive { border-color: color-mix(in srgb, var(--ion) 30%, transparent); }
+.gc-profile-balanced    { border-color: color-mix(in srgb, var(--signal) 25%, transparent); }
+.gc-profile-streaming   { border-color: color-mix(in srgb, var(--warn) 25%, transparent); }
+.gc-profile-power_saver { border-color: color-mix(in srgb, var(--ok) 25%, transparent); }
+
+/* ── V5.1 — Card grande do jogo em execução (hero) ───────────────────────── */
+.gc-hero-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.gc-hero {
+  padding: 16px; border-radius: 16px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--signal) 8%, var(--panel)), var(--panel));
+  border: 1px solid color-mix(in srgb, var(--signal) 30%, transparent);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.gc-hero-boosted { border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.gc-hero-top { display: flex; align-items: center; gap: 12px; }
+.gc-hero-icon {
+  font-size: 26px; width: 48px; height: 48px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px; background: var(--raised); border: 1px solid var(--hairline);
+}
+.gc-hero-title { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.gc-hero-title strong { font-size: 17px; font-weight: 600; color: var(--ink-hi); }
+.gc-hero-priority { flex-shrink: 0; }
+.gc-hero-profile {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 10px 12px; border-radius: 10px; background: var(--raised); border: 1px solid var(--hairline);
+}
+.gc-hero-profile-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-low); }
+.gc-hero-profile-val { font-size: 14px; font-weight: 600; color: var(--ink-hi); display: flex; align-items: center; gap: 6px; }
+.gc-hero-profile-none { font-size: 13px; color: var(--ink-low); }
+.gc-hero-actions { display: flex; gap: 8px; }
+
+/* ── Game rows ───────────────────────────────────────────────────────────── */
+
+.gc-game-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gc-game-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: border-color 0.15s;
+}
+
+.gc-game-row-running {
+  border-color: color-mix(in srgb, var(--signal) 40%, transparent);
+  background: color-mix(in srgb, var(--signal) 4%, var(--panel));
+}
+
+.gc-game-row-boosted {
+  border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+  background: color-mix(in srgb, var(--ok) 4%, var(--panel));
+}
+
+.gc-game-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 32px;
+  text-align: center;
+}
+
+.gc-game-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gc-game-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-hi);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gc-game-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gc-exe-label {
+  font-size: 11px;
+  color: var(--ink-low);
+  font-family: var(--ax-font-mono, monospace);
+}
+
+.gc-game-badge {
+  flex-shrink: 0;
+}
+
+.gc-game-profile-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.gc-game-actions {
+  flex-shrink: 0;
+}
+
+/* ── Profile selector ────────────────────────────────────────────────────── */
+
+.gc-profile-select {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-hi);
+  background: var(--raised);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  outline: none;
+  min-width: 130px;
+  transition: border-color 0.15s;
+  appearance: auto;
+}
+
+.gc-profile-select:focus {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--signal) 20%, transparent);
+}
+
+.gc-profile-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gc-saving-label {
+  font-size: 11px;
+  color: var(--ink-low);
+}
+
+/* ── Loading ─────────────────────────────────────────────────────────────── */
+
+.gc-loading {
+  font-size: 13px;
+  color: var(--ink-mid);
+  padding: 24px;
+  text-align: center;
+}
+
+/* ── History modal ───────────────────────────────────────────────────────── */
+
+.gc-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gc-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--raised);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+
+.gc-history-profile {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-hi);
+}
+
+.gc-history-meta {
+  font-size: 12px;
+  color: var(--ink-low);
+}
+
+/* ── FASE 7: FPS ao vivo no hero card ───────────────────────────────────── */
+.gc-hero-fps {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: var(--ax-r-md);
+  background: color-mix(in srgb, var(--ok) 6%, var(--raised));
+  border: 1px solid color-mix(in srgb, var(--ok) 28%, transparent);
+}
+.gc-fps-lbl {
+  font: 700 11px/1 var(--ax-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--ok);
+  flex-shrink: 0;
+}
+.gc-fps-vals {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.gc-fps-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.gc-fps-stat strong {
+  font: 700 20px/1 var(--ax-font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-hi);
+}
+.gc-fps-stat small {
+  font: 500 10px/1 var(--ax-font-ui);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--ink-low);
+}
+.gc-fps-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--hairline);
+  flex-shrink: 0;
+}
+.gc-hero-fps.gc-fps-pending {
+  background: color-mix(in srgb, var(--signal) 5%, var(--raised));
+  border-color: color-mix(in srgb, var(--signal) 20%, transparent);
+}
+.gc-fps-pending-txt {
+  font-size: 12px;
+  color: var(--ink-low);
+  font-style: italic;
+}

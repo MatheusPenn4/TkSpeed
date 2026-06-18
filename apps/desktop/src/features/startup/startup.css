@@ -16,7 +16,8 @@
 /* Stats bar */
 .su2-stats {
   display: flex; border-radius: var(--ax-r-md);
-  background: var(--panel); border: 1px solid var(--hairline); overflow: hidden;
+  background: var(--panel); background-image: var(--piano-sheen);
+  border: 1px solid var(--hairline); overflow: hidden;
 }
 .su2-stat {
   flex: 1; display: flex; flex-direction: column; align-items: center;
@@ -54,12 +55,14 @@
 
 .su2-info { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .su2-name { font: 600 14px/1.3 var(--ax-font-ui); color: var(--ink-hi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.su2-desc { font-size: 12px; color: var(--ink-mid); line-height: 1.45; margin: 0; }
 .su2-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .su2-loc  { font: 600 10px/1 var(--ax-font-data); text-transform: uppercase; letter-spacing: 1px; color: var(--ink-faint); }
 
 .su2-saving { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .su2-saving-label { font: 500 10px/1 var(--ax-font-ui); text-transform: uppercase; letter-spacing: 1px; color: var(--ink-low); }
 .su2-saving-val   { font: 700 16px/1 var(--ax-font-data); font-variant-numeric: tabular-nums; color: var(--signal); }
+.su2-saving-mem   { font: 500 11px/1 var(--ax-font-data); color: var(--ink-faint); }
 
 .su2-action { min-width: 110px; display: flex; justify-content: flex-end; }
 .su2-admin  { font-size: 12px; color: var(--ink-faint); }

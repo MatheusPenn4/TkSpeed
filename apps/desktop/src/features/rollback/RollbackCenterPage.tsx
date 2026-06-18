@@ -39,17 +39,17 @@ const VERDICT_LABEL: Record<string, string> = {
 };
 
 const METRIC_LABEL: Record<string, string> = {
-  cpu_multi:         "CPU Multi-Core",
-  cpu_single:        "CPU Single-Core",
-  cpu_score:         "CPU Score",
-  ram_bandwidth_gbs: "RAM Banda",
-  ram_latency_ns:    "RAM Latência",
-  io_seq_read_mbs:   "Leitura Seq.",
-  io_rand_read_iops: "IOPS Aleatório",
-  fps_avg:           "FPS Médio",
-  fps_1pct_low:      "1% Low",
-  fps_01pct_low:     "0.1% Low",
-  frametime_avg:     "Frame Time Médio",
+  cpu_multi:         "Processador",
+  cpu_single:        "Processador (1 núcleo)",
+  cpu_score:         "Processador",
+  ram_bandwidth_gbs: "Velocidade da memória",
+  ram_latency_ns:    "Resposta da memória",
+  io_seq_read_mbs:   "Leitura de disco",
+  io_rand_read_iops: "Acesso ao disco",
+  fps_avg:           "FPS médio",
+  fps_1pct_low:      "FPS mínimo",
+  fps_01pct_low:     "FPS mínimo (extremo)",
+  frametime_avg:     "Tempo de quadro",
 };
 
 export function RollbackCenterPage() {
@@ -113,7 +113,7 @@ export function RollbackCenterPage() {
       {!available && (
         <div className="rbc-banner">
           <AxIcon name="alert" size={15} />
-          Abra com <span className="mono">npm run tauri dev</span> para ver snapshots e otimizações reais.
+          Abra o aplicativo TkSpeed para ver os pontos de restauração e otimizações reais.
         </div>
       )}
 

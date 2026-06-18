@@ -53,17 +53,34 @@ impl Default for GpuCollector {
 
 /// Temperatura de CPU via `sysinfo::Components` (best-effort no Windows).
 /// Retorna `None` quando o SO não expõe o sensor (comum sem driver/admin).
+/// Suporta Intel (CPU Package, Core) e AMD (Tctl/Tdie, k10temp, Tccd).
 pub fn cpu_temp_c() -> Option<f64> {
     let comps = Components::new_with_refreshed_list();
+
+    // Prioridade: Intel "Package" > AMD "Tdie/Tctl" > qualquer "core 0" > primeiro
     let pick = comps
         .list()
         .iter()
         .find(|c| {
             let l = c.label().to_lowercase();
-            l.contains("cpu") || l.contains("package") || l.contains("core")
+            l.contains("package") || l.contains("cpu package")
+        })
+        .or_else(|| {
+            comps.list().iter().find(|c| {
+                let l = c.label().to_lowercase();
+                l.contains("tdie") || l.contains("tctl") || l.contains("k10temp")
+                    || l.contains("cpu die")
+            })
+        })
+        .or_else(|| {
+            comps.list().iter().find(|c| {
+                let l = c.label().to_lowercase();
+                l.contains("cpu") || l.contains("core 0") || l.contains("core#0")
+            })
         })
         .or_else(|| comps.list().first());
-    pick.map(|c| c.temperature() as f64).filter(|t| *t > 0.0)
+
+    pick.map(|c| c.temperature() as f64).filter(|t| *t > 0.0 && *t < 150.0)
 }
 
 /// Fotografia ao vivo do hardware para o dashboard do Performance Lab.

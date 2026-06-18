@@ -55,13 +55,10 @@ pub fn build() -> Vec<Capability> {
         (status::LIMITED, "sensores não disponíveis neste hardware")
     };
 
-    // ready = PresentMon presente + admin (ETW precisa de elevação)
-    // limited = PresentMon presente, mas sem admin
-    // missing = PresentMon ausente
     let fps = match (&presentmon, is_admin) {
-        (None, _) => (status::MISSING, "PresentMon ausente"),
-        (Some(_), false) => (status::LIMITED, "PresentMon presente; admin necessário para ETW"),
-        (Some(_), true) => (status::READY, "PresentMon + elevação OK"),
+        (None, _)        => (status::MISSING,  "Indisponível nesta instalação"),
+        (Some(_), false) => (status::LIMITED,  "Requer execução como administrador"),
+        (Some(_), true)  => (status::READY,    "Pronto"),
     };
 
     let admin = if is_admin {

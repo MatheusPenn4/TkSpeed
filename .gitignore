@@ -33,3 +33,7 @@ logs/
 .vscode/
 .idea/
 *.swp
+
+# Tauri signing keys (NEVER commit)
+.tauri/tkspeed.key
+.tauri/tkspeed.key.pub

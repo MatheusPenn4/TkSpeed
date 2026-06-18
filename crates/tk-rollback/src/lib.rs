@@ -6,12 +6,9 @@
 //! em registro HKCU (sem elevação, 100% reversível). Nada é excluído de forma
 //! permanente; restaurações são validadas por hash de integridade.
 
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-
 use serde::{Deserialize, Serialize};
 use tk_contracts::{ProtectionState, RollbackOutcome, SelfTestReport, SelfTestStep, SnapshotInfo};
-use tk_platform_win::{power, registry};
+use tk_platform_win::{memory, power, registry, registry_hklm};
 use tk_storage::{AuditRepo, Db, SnapshotEntryRow, SnapshotRepo};
 
 // ── Operação-piloto: HKCU\Control Panel\Desktop\MenuShowDelay ──
@@ -96,6 +93,22 @@ pub enum ReversibleAction {
         quarantine: String,
         size: u64,
     },
+    /// HKLM DWORD — exige admin para aplicar; rollback restaura valor anterior.
+    RegistryHklmDword {
+        subkey: String,
+        name: String,
+        old: Option<u32>,
+        new: Option<u32>,
+    },
+    /// HKLM String — exige admin para aplicar; rollback restaura valor anterior (ou deleta).
+    RegistryHklmString {
+        subkey: String,
+        name: String,
+        old: Option<String>,
+        new: Option<String>,
+    },
+    /// Liberação one-shot da standby list via NtSetSystemInformation. Não tem rollback.
+    MemoryStandbyFlush,
 }
 
 fn action_to_entry(a: &ReversibleAction) -> SnapshotEntryRow {
@@ -124,6 +137,24 @@ fn action_to_entry(a: &ReversibleAction) -> SnapshotEntryRow {
             old_value_json: Some(serde_json::to_string(&FileVal { quarantine: quarantine.clone(), size: *size }).unwrap_or_default()),
             new_value_json: None,
         },
+        ReversibleAction::RegistryHklmDword { subkey, name, old, new } => SnapshotEntryRow {
+            target_type: "registry_hklm_dword".into(),
+            target_key: format!("{subkey}\\{name}"),
+            old_value_json: Some(serde_json::to_string(&DwordVal { value: *old }).unwrap_or_default()),
+            new_value_json: Some(serde_json::to_string(&DwordVal { value: *new }).unwrap_or_default()),
+        },
+        ReversibleAction::RegistryHklmString { subkey, name, old, new } => SnapshotEntryRow {
+            target_type: "registry_hklm_string".into(),
+            target_key: format!("{subkey}\\{name}"),
+            old_value_json: Some(serde_json::to_string(&RegVal { value: old.clone() }).unwrap_or_default()),
+            new_value_json: Some(serde_json::to_string(&RegVal { value: new.clone() }).unwrap_or_default()),
+        },
+        ReversibleAction::MemoryStandbyFlush => SnapshotEntryRow {
+            target_type: "memory_flush".into(),
+            target_key: "standby_list".into(),
+            old_value_json: None,
+            new_value_json: None,
+        },
     }
 }
 
@@ -150,6 +181,17 @@ pub fn apply_actions(actions: &[ReversibleAction]) -> Result<u64> {
                     freed += *size; // arquivo bloqueado → pulado
                 }
             }
+            ReversibleAction::RegistryHklmDword { subkey, name, new, .. } => match new {
+                Some(v) => registry_hklm::write_u32(subkey, name, *v)?,
+                None => registry_hklm::delete_value(subkey, name)?,
+            },
+            ReversibleAction::RegistryHklmString { subkey, name, new, .. } => match new {
+                Some(v) => registry_hklm::write_string(subkey, name, v)?,
+                None => registry_hklm::delete_value(subkey, name)?,
+            },
+            ReversibleAction::MemoryStandbyFlush => {
+                freed += memory::flush_standby().map_err(RollbackError::Platform)?;
+            }
         }
     }
     Ok(freed)
@@ -170,6 +212,13 @@ pub fn verify_actions(actions: &[ReversibleAction]) -> Result<bool> {
                 power::get_active_scheme().ok().as_deref() == Some(new_guid.as_str())
             }
             ReversibleAction::FileQuarantine { .. } => true,
+            ReversibleAction::RegistryHklmDword { subkey, name, new, .. } => {
+                registry_hklm::read_u32(subkey, name).unwrap_or(None) == *new
+            }
+            ReversibleAction::RegistryHklmString { subkey, name, new, .. } => {
+                registry_hklm::read_string(subkey, name).unwrap_or(None) == *new
+            }
+            ReversibleAction::MemoryStandbyFlush => true,
         };
         if !ok {
             return Ok(false);
@@ -352,6 +401,32 @@ impl ProtectionService {
                 }
                 // Se o arquivo não foi movido na aplicação (bloqueado), ele já está no lugar.
             }
+            "registry_hklm_dword" => {
+                let old: DwordVal =
+                    serde_json::from_str(e.old_value_json.as_deref().unwrap_or("{\"value\":null}"))?;
+                let (sub, name) = split_key(&e.target_key);
+                match old.value {
+                    Some(v) => registry_hklm::write_u32(sub, name, v)?,
+                    None => registry_hklm::delete_value(sub, name)?,
+                }
+                if registry_hklm::read_u32(sub, name).unwrap_or(None) != old.value {
+                    return Err(RollbackError::Validation(format!("registry_hklm_dword {}", e.target_key)));
+                }
+            }
+            "registry_hklm_string" => {
+                let old = parse_regval(e.old_value_json.as_deref())?;
+                let (sub, name) = split_key(&e.target_key);
+                match &old.value {
+                    Some(v) => registry_hklm::write_string(sub, name, v)?,
+                    None => registry_hklm::delete_value(sub, name)?,
+                }
+                if registry_hklm::read_string(sub, name).unwrap_or(None) != old.value {
+                    return Err(RollbackError::Validation(format!("registry_hklm_string {}", e.target_key)));
+                }
+            }
+            "memory_flush" => {
+                // Sem rollback: liberar a standby list é one-shot e inofensivo.
+            }
             other => {
                 tracing::warn!("restore_entry: tipo não suportado: {other}");
             }
@@ -363,14 +438,15 @@ impl ProtectionService {
         let rows = self.snapshots().list(limit).await?;
         let mut out = Vec::with_capacity(rows.len());
         for r in rows {
-            let changes = self.snapshots().entries(r.id).await?.len() as u32;
+            let entries = self.snapshots().entries(r.id).await?;
+            let target = target_label_from_entries(&entries);
             out.push(SnapshotInfo {
                 id: r.id,
                 ts: r.ts,
                 reason: r.reason,
                 status: r.status,
-                changes,
-                target: TARGET_LABEL.into(),
+                changes: entries.len() as u32,
+                target,
             });
         }
         Ok(out)
@@ -382,15 +458,43 @@ impl ProtectionService {
             .get(id)
             .await?
             .ok_or(RollbackError::NotFound(id))?;
-        let changes = self.snapshots().entries(id).await?.len() as u32;
+        let entries = self.snapshots().entries(id).await?;
+        let target = target_label_from_entries(&entries);
         Ok(SnapshotInfo {
             id: r.id,
             ts: r.ts,
             reason: r.reason,
             status: r.status,
-            changes,
-            target: TARGET_LABEL.into(),
+            changes: entries.len() as u32,
+            target,
         })
+    }
+
+    /// Cria um ponto de restauração manual capturando o plano de energia ativo
+    /// como linha de base reversível. Reusa o pipeline de snapshot existente — o
+    /// estado é apenas PERSISTIDO (nada é alterado no sistema). Restaurar este
+    /// ponto reaplica o plano de energia vigente no momento da captura.
+    pub async fn create_manual_point(&self) -> Result<SnapshotInfo> {
+        let current = power::get_active_scheme()
+            .map_err(|e| RollbackError::Validation(format!("plano de energia: {e}")))?;
+        let action = ReversibleAction::PowerPlan {
+            old_guid: current.clone(),
+            new_guid: current,
+        };
+        let reason = "Ponto de restauração manual".to_string();
+        let snap_id = self
+            .create_snapshot(&reason, std::slice::from_ref(&action), None)
+            .await?;
+        self.snapshot_info(snap_id).await
+    }
+
+    /// Remove um ponto de restauração (e suas entradas). Idempotente.
+    pub async fn delete(&self, snapshot_id: i64) -> Result<()> {
+        self.snapshots().delete(snapshot_id).await?;
+        self.audit()
+            .log("user", "snapshot.deleted", &format!("{{\"snapshot\":{snapshot_id}}}"))
+            .await?;
+        Ok(())
     }
 
     pub async fn protection_state(&self) -> Result<ProtectionState> {
@@ -468,15 +572,45 @@ fn split_key(full: &str) -> (&str, &str) {
     }
 }
 
-/// Hash de integridade determinístico sobre (target_key, old_value_json).
-/// `DefaultHasher::new()` usa chave fixa → estável entre execuções.
-fn integrity(entries: &[SnapshotEntryRow]) -> String {
-    let mut h = DefaultHasher::new();
-    for e in entries {
-        e.target_key.hash(&mut h);
-        e.old_value_json.hash(&mut h);
+fn target_label_from_entries(entries: &[SnapshotEntryRow]) -> String {
+    match entries.first() {
+        None => TARGET_LABEL.into(),
+        Some(e) => match e.target_type.as_str() {
+            "power" => "Plano de Energia".into(),
+            "memory_flush" => "Standby List (RAM)".into(),
+            "file" => std::path::Path::new(&e.target_key)
+                .parent()
+                .and_then(|p| p.to_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| e.target_key.clone()),
+            "registry_hklm_dword" | "registry_hklm_string" => {
+                format!("HKLM\\{}", e.target_key)
+            }
+            _ => format!("HKCU\\{}", e.target_key),
+        },
     }
-    format!("{:016x}", h.finish())
+}
+
+/// Hash de integridade FNV-1a 64-bit — determinístico entre builds e versões Rust.
+fn integrity(entries: &[SnapshotEntryRow]) -> String {
+    const FNV_PRIME: u64 = 0x0000_0100_0000_01B3;
+    const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut h: u64 = FNV_OFFSET;
+    for e in entries {
+        for b in e.target_key.as_bytes() {
+            h ^= *b as u64;
+            h = h.wrapping_mul(FNV_PRIME);
+        }
+        h ^= 0xFF;
+        if let Some(v) = &e.old_value_json {
+            for b in v.as_bytes() {
+                h ^= *b as u64;
+                h = h.wrapping_mul(FNV_PRIME);
+            }
+        }
+        h ^= 0xFE;
+    }
+    format!("{h:016x}")
 }
 
 // ───────────────────────── Testes (A2.1 + A2.4) ─────────────────────────

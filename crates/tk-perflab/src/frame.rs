@@ -161,9 +161,31 @@ pub struct PresentMonFrameSource {
 }
 
 impl PresentMonFrameSource {
-    /// Procura `PresentMon*.exe` em %APPDATA%\TkSpeed\tools.
+    /// Localiza `PresentMon*.exe` em ordem de prioridade:
+    /// 1. `{exe_dir}/tools/` — recurso embutido no instalador Tauri.
+    /// 2. `%APPDATA%\TkSpeed\tools\` — compatibilidade com versões anteriores.
     pub fn locate() -> Option<Self> {
-        let dir = std::env::var("APPDATA").ok().map(|p| PathBuf::from(p).join("TkSpeed").join("tools"))?;
+        // 1. Diretório do executável (recurso Tauri bundled)
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(dir) = exe.parent() {
+                let named = dir.join("tools").join("PresentMon-x64.exe");
+                if named.exists() {
+                    return Some(Self { exe: named });
+                }
+                // Varredura de PresentMon*.exe em tools/
+                if let Ok(entries) = std::fs::read_dir(dir.join("tools")) {
+                    for e in entries.flatten() {
+                        let name = e.file_name().to_string_lossy().to_lowercase();
+                        if name.starts_with("presentmon") && name.ends_with(".exe") {
+                            return Some(Self { exe: e.path() });
+                        }
+                    }
+                }
+            }
+        }
+        // 2. Legado: %APPDATA%\TkSpeed\tools
+        let dir = std::env::var("APPDATA").ok()
+            .map(|p| PathBuf::from(p).join("TkSpeed").join("tools"))?;
         let entries = std::fs::read_dir(&dir).ok()?;
         for e in entries.flatten() {
             let p = e.path();

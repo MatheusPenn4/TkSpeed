@@ -8,15 +8,15 @@ import "./results.css";
 // ── Labels legíveis para métricas internas ───────────────────────────────────
 
 const METRIC_LABEL: Record<string, string> = {
-  cpu_multi:      "CPU Multi-Core",
-  cpu_single:     "CPU Single-Core",
-  cpu_score:      "CPU Score",
-  ram_latency:    "Latência RAM",
-  ram_bandwidth:  "Banda RAM",
-  storage_seq:    "Leitura Sequencial",
-  storage_rand:   "Leitura Aleatória",
-  fps_avg:        "FPS Médio",
-  fps_1pct:       "1% Low FPS",
+  cpu_multi:      "Processador",
+  cpu_single:     "Processador (1 núcleo)",
+  cpu_score:      "Processador",
+  ram_latency:    "Resposta da memória",
+  ram_bandwidth:  "Velocidade da memória",
+  storage_seq:    "Leitura de disco",
+  storage_rand:   "Acesso ao disco",
+  fps_avg:        "FPS médio",
+  fps_1pct:       "FPS mínimo",
 };
 function metricLabel(id: string): string {
   return METRIC_LABEL[id] ?? id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -171,33 +171,62 @@ function ResultCard({ run }: { run: OptimizationRunInfo }) {
 function ResultsSummary({ history }: { history: OptimizationRunInfo[] }) {
   const kept   = history.filter((h) => h.decision === "Keep").length;
   const gains  = history.filter((h) => h.decision === "Keep" && h.comparison?.rows.some((r) => r.verdict === "Gain")).length;
-  const avgGain = (() => {
-    const vals = history
-      .filter((h) => h.comparison?.rows.length)
-      .flatMap((h) => h.comparison!.rows.filter((r) => r.metric === "cpu_multi" || r.metric === "cpu_score"))
-      .map((r) => r.delta_pct);
-    if (!vals.length) return null;
-    return vals.reduce((a, b) => a + b, 0) / vals.length;
-  })();
+
+  const allGainRows = history
+    .filter((h) => h.comparison?.rows.length)
+    .flatMap((h) => h.comparison!.rows.filter((r) => r.metric === "cpu_multi" || r.metric === "cpu_score").map((r) => ({ ...r, name: h.name })));
+
+  const avgGain = allGainRows.length
+    ? allGainRows.reduce((a, b) => a + b.delta_pct, 0) / allGainRows.length
+    : null;
+
+  const bestRow = allGainRows.length
+    ? allGainRows.reduce((best, r) => (r.delta_pct > best.delta_pct ? r : best))
+    : null;
 
   return (
-    <div className="res-summary-bar">
-      <div className="res-stat">
-        <strong>{history.length}</strong>
-        <span>otimizações testadas</span>
+    <div className="res-summary-wrap">
+      <div className="res-summary-bar">
+        <div className="res-stat">
+          <strong>{history.length}</strong>
+          <span>otimizações testadas</span>
+        </div>
+        <div className="res-stat res-stat-ok">
+          <strong>{kept}</strong>
+          <span>mantidas pelo sistema</span>
+        </div>
+        <div className="res-stat res-stat-gain">
+          <strong>{gains}</strong>
+          <span>com ganho comprovado</span>
+        </div>
+        {avgGain !== null && (
+          <div className="res-stat res-stat-pct">
+            <strong>{fmtDelta(avgGain)}</strong>
+            <span>ganho médio confirmado</span>
+          </div>
+        )}
       </div>
-      <div className="res-stat res-stat-ok">
-        <strong>{kept}</strong>
-        <span>mantidas pelo sistema</span>
-      </div>
-      <div className="res-stat res-stat-gain">
-        <strong>{gains}</strong>
-        <span>com ganho comprovado</span>
-      </div>
-      {avgGain !== null && (
-        <div className="res-stat res-stat-pct">
-          <strong>{fmtDelta(avgGain)}</strong>
-          <span>ganho médio de CPU</span>
+
+      {bestRow && bestRow.delta_pct > 0 && (
+        <div className="res-highlight">
+          <div className="res-highlight-label">🏆 Melhor resultado desta máquina</div>
+          <div className="res-highlight-body">
+            <div className="res-highlight-numbers">
+              <div className="res-highlight-val">
+                <span className="res-label">ANTES</span>
+                <strong>{bestRow.before.toFixed(0)}</strong>
+                <span className="res-unit">{bestRow.unit}</span>
+              </div>
+              <div className="res-highlight-arrow">→</div>
+              <div className="res-highlight-val res-after">
+                <span className="res-label">DEPOIS</span>
+                <strong>{bestRow.after.toFixed(0)}</strong>
+                <span className="res-unit">{bestRow.unit}</span>
+              </div>
+              <div className="res-highlight-pct">{fmtDelta(bestRow.delta_pct)}</div>
+            </div>
+            <div className="res-highlight-name">{bestRow.name} · {metricLabel(bestRow.metric)}</div>
+          </div>
         </div>
       )}
     </div>
@@ -227,7 +256,7 @@ export function ResultsPage() {
 
       {!available && (
         <div className="res-banner">
-          Abra com <span className="res-mono">npm run tauri dev</span> para ver resultados reais.
+          Abra o aplicativo TkSpeed para ver os resultados reais.
         </div>
       )}
 
@@ -246,14 +275,14 @@ export function ResultsPage() {
         <div className="res-list">
           {withComparison.length > 0 && (
             <section>
-              <div className="res-section-hd">Com comparação antes × depois</div>
+              <div className="res-section-hd">Ganhos medidos (antes × depois)</div>
               {withComparison.map((r) => <ResultCard key={r.id} run={r} />)}
             </section>
           )}
 
           {withoutComparison.length > 0 && (
             <section>
-              <div className="res-section-hd">Aplicadas sem benchmark comparativo</div>
+              <div className="res-section-hd">Aplicadas sem medição comparativa</div>
               {withoutComparison.map((r) => <ResultCard key={r.id} run={r} />)}
             </section>
           )}

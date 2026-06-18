@@ -8,3 +8,4 @@ winreg = "0.52"
 
 [dependencies]
 thiserror = { workspace = true }
+serde = { workspace = true, features = ["derive"] }

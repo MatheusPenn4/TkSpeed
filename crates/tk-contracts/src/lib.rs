@@ -387,6 +387,7 @@ pub struct OptimizationInfo {
     pub risk: String, // Safe | Moderate | Advanced | Experimental
     pub expected_impact: String,
     pub requires_elevation: bool,
+    pub requires_reboot: bool,
 }
 
 /// Decisão do pipeline após a comparação com evidência.

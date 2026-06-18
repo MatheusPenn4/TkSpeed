@@ -347,6 +347,19 @@ impl SnapshotRepo {
         Ok(n)
     }
 
+    /// Remove um snapshot e suas entradas. Idempotente (ausência = sucesso).
+    pub async fn delete(&self, snapshot_id: i64) -> Result<()> {
+        sqlx::query("DELETE FROM snapshot_entries WHERE snapshot_id = ?")
+            .bind(snapshot_id)
+            .execute(&self.db)
+            .await?;
+        sqlx::query("DELETE FROM snapshots WHERE id = ?")
+            .bind(snapshot_id)
+            .execute(&self.db)
+            .await?;
+        Ok(())
+    }
+
     pub async fn list(&self, limit: i64) -> Result<Vec<SnapshotRow>> {
         let rows = sqlx::query(
             "SELECT id, ts, reason, integrity_hash, status FROM snapshots ORDER BY ts DESC LIMIT ?",

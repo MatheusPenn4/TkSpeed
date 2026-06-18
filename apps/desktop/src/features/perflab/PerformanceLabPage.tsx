@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   usePerfLab,
   type BenchmarkSessionInfo,
@@ -9,7 +9,14 @@ import {
   type PerfVerdict,
 } from "@/shared/hooks/usePerfLab";
 import { AxBadge, type AxBadgeVariant, AxEmptyState } from "@/shared/apex";
+import { invokeCmd } from "@/shared/lib/tauri";
 import "./perflab.css";
+
+type DetectedGame = { pid: number; name: string; exe: string };
+
+function metricVal(s: BenchmarkSessionInfo, key: string): number | null {
+  return s.metrics.find((m) => m.metric === key)?.value ?? null;
+}
 
 const METRIC_LABEL: Record<string, string> = {
   cpu_single: "CPU · 1 thread",
@@ -88,6 +95,52 @@ export function PerformanceLabPage() {
   const [bottleneck, setBottleneck] = useState<BottleneckReport | null>(null);
   const [detecting, setDetecting]   = useState(false);
 
+  // UX-001: detecção automática do jogo + captura de FPS sem digitação.
+  const [detectedGame, setDetectedGame] = useState<DetectedGame | null>(null);
+  const [fpsAuto, setFpsAuto]           = useState<BenchmarkSessionInfo | null>(null);
+  const [fpsAutoErr, setFpsAutoErr]     = useState<string | null>(null);
+  const [fpsCapturing, setFpsCapturing] = useState(false);
+  const autoCaptured = useRef<Set<number>>(new Set());
+
+  // Poll de jogos em execução (reaproveita detect_games já existente).
+  useEffect(() => {
+    if (!available) return;
+    let alive = true;
+    const tick = async () => {
+      try {
+        const games = await invokeCmd<DetectedGame[]>("detect_games", {});
+        if (alive) setDetectedGame(games && games.length ? games[0] : null);
+      } catch { /* backend inicializando */ }
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => { alive = false; clearInterval(id); };
+  }, [available]);
+
+  // Captura automática: dispara uma vez por jogo detectado.
+  async function captureForGame(g: DetectedGame) {
+    const exeName = g.exe.replace(/\\/g, "/").split("/").pop() || g.name;
+    setFpsCapturing(true);
+    setFpsAutoErr(null);
+    try {
+      const s = await captureFps(exeName, 15);
+      if (s) setFpsAuto(s);
+      else setFpsAutoErr("Captura de FPS requer execução como administrador.");
+    } catch {
+      setFpsAutoErr("Não foi possível capturar o FPS deste jogo agora.");
+    } finally {
+      setFpsCapturing(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!available || !detectedGame || fpsCapturing) return;
+    if (autoCaptured.current.has(detectedGame.pid)) return;
+    autoCaptured.current.add(detectedGame.pid);
+    captureForGame(detectedGame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [available, detectedGame]);
+
   useEffect(() => {
     if (sessions.length >= 1 && afterId === null)  setAfterId(sessions[0].id);
     if (sessions.length >= 2 && beforeId === null) setBeforeId(sessions[1].id);
@@ -143,7 +196,7 @@ export function PerformanceLabPage() {
 
       {!available && (
         <div className="pl-banner">
-          ⚠ Use <span className="mono">npm run tauri dev</span> para dados reais.
+          Abra o aplicativo TkSpeed para ver dados reais.
         </div>
       )}
       {error && <div className="pl-banner pl-banner-risk">Erro: {error}</div>}
@@ -255,10 +308,56 @@ export function PerformanceLabPage() {
         )}
       </section>
 
-      {/* Captura de FPS */}
+      {/* Captura de FPS — automática (UX-001) */}
       <section className="ax-surface ax-card">
-        <div className="pl-section-hd">Captura de Jogo · FPS &amp; Frame Time</div>
-        <div className="pl-run-row">
+        <div className="pl-section-hd">FPS do Jogo · automático</div>
+        {!detectedGame ? (
+          <div className="pl-fps-empty">
+            <span className="pl-fps-empty-icon">🎮</span>
+            <strong>Nenhum jogo detectado</strong>
+            <p>Abra um jogo para iniciar a captura de FPS automaticamente.</p>
+          </div>
+        ) : (
+          <div className="pl-fps-auto">
+            <div className="pl-fps-game">
+              <span>Jogo detectado</span>
+              <strong>{detectedGame.name}</strong>
+            </div>
+            {fpsCapturing && (
+              <div className="pl-running">Capturando FPS de {detectedGame.name}… (alguns segundos)</div>
+            )}
+            {fpsAuto && !fpsCapturing && (
+              <div className="pl-fps-grid">
+                <div className="pl-fps-metric pl-fps-primary">
+                  <span>FPS atual</span>
+                  <strong>{fmt(metricVal(fpsAuto, "fps_avg"))}</strong>
+                </div>
+                <div className="pl-fps-metric">
+                  <span>1% low</span>
+                  <strong>{fmt(metricVal(fpsAuto, "fps_1pct_low"))}</strong>
+                </div>
+                <div className="pl-fps-metric">
+                  <span>0.1% low</span>
+                  <strong>{fmt(metricVal(fpsAuto, "fps_01pct_low"))}</strong>
+                </div>
+              </div>
+            )}
+            {fpsAutoErr && !fpsCapturing && <div className="pl-note">{fpsAutoErr}</div>}
+            <button
+              className="ax-btn ax-btn-ghost ax-btn-sm"
+              onClick={() => captureForGame(detectedGame)}
+              disabled={fpsCapturing || !available}
+            >
+              {fpsCapturing ? "Capturando…" : "Capturar novamente"}
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* Captura manual / demo — avançado */}
+      <details className="ax-surface ax-card pl-advanced">
+        <summary className="pl-section-hd">Captura manual &amp; demonstração (avançado)</summary>
+        <div className="pl-run-row" style={{ marginTop: 12 }}>
           <input
             className="pl-input"
             value={gameTarget}
@@ -288,12 +387,10 @@ export function PerformanceLabPage() {
           </button>
         </div>
         <div className="pl-note">
-          Captura real via <span className="mono">PresentMon</span> — coloque o{" "}
-          <span className="mono">PresentMon-x64.exe</span> em{" "}
-          <span className="mono">%APPDATA%\TkSpeed\tools</span> e rode como administrador.
-          O botão sintético valida 1%/0.1% low + confiança sem PresentMon.
+          A detecção automática acima já escolhe o jogo e o processo. O modo manual e a
+          demonstração sintética (1% / 0.1% low sem jogo aberto) ficam aqui para diagnóstico.
         </div>
-      </section>
+      </details>
 
       {/* Comparar sessões */}
       <section className="ax-surface ax-card">

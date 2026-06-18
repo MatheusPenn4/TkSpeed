@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AxBadge,
@@ -11,32 +11,147 @@ import {
   AxIcon,
   AxModal,
   AxSignalLockMeter,
-  BrandWatermark,
   useAxToast,
 } from "@/shared/apex";
 import {
   useMissionControl,
-  type Capability,
-  type Diagnosis,
   type ProfileApplyResult,
   type Recommendation,
 } from "./useMissionControl";
 import { invokeCmd, isTauri } from "@/shared/lib/tauri";
 import "./mission.css";
 
+// ── Live hardware snapshot ────────────────────────────────────────────────────
+
+interface HwCpuLive  { usage_pct: number; clock_mhz: number | null; temp_c: number | null; }
+interface HwGpuLive  { name: string; usage_pct: number; vram_used_mb: number; vram_total_mb: number; temp_c: number | null; }
+interface HwRamLive  { used_gb: number; free_gb: number; total_gb: number; usage_pct: number; }
+interface RunningGameLive { pid: number; name: string; exe: string; }
+interface HwSnap     { cpu: HwCpuLive; gpu: HwGpuLive | null; ram: HwRamLive; running_games: RunningGameLive[]; }
+
+interface FpsMeta { ts: number; metrics: { metric: string; value: number }[]; }
+
+function useLiveSnapshot(): HwSnap | null {
+  const [snap, setSnap] = useState<HwSnap | null>(null);
+  const timerRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isTauri()) return;
+    async function poll() {
+      try {
+        const s = await invokeCmd<HwSnap>("monitor_live_snapshot");
+        setSnap(s);
+      } catch { /* silencioso */ }
+    }
+    poll();
+    timerRef.current = window.setInterval(poll, 3000);
+    return () => { if (timerRef.current !== null) clearInterval(timerRef.current); };
+  }, []);
+  return snap;
+}
+
+function useLatestFps(): FpsMeta | null {
+  const [fps, setFps] = useState<FpsMeta | null>(null);
+  useEffect(() => {
+    if (!isTauri()) return;
+    let alive = true;
+    async function poll() {
+      try {
+        const s = await invokeCmd<FpsMeta | null>("perf_latest_fps_session");
+        if (alive && s) setFps(s);
+      } catch { /* silencioso */ }
+    }
+    poll();
+    const id = setInterval(poll, 20_000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+  return fps;
+}
+
+function fpsMetricVal(fps: FpsMeta, key: string): number {
+  return fps.metrics.find((m) => m.metric === key)?.value ?? 0;
+}
+
 // ── Auto Pilot ───────────────────────────────────────────────────────────────
 
-type ApStep = { id: string; label: string; kind: "Config" | "Profile"; status: "pending" | "running" | "ok" | "skip" };
+type ApGroup = "games" | "memory" | "network" | "system";
+type ApImpact = "alto" | "medio" | "baixo";
+
+type ApStep = {
+  id: string;
+  label: string;
+  kind: "Config" | "Profile";
+  group: ApGroup;
+  impact: ApImpact;
+  status: "pending" | "running" | "ok" | "skip";
+  skipReason?: string;
+  skipKind?: "already" | "needs_admin" | "unavailable";
+};
 type ApPhase = "idle" | "planning" | "running" | "done";
 
+const AP_GROUP_LABEL: Record<ApGroup, string> = {
+  games: "Jogos", memory: "Memória", network: "Rede", system: "Sistema",
+};
+const AP_IMPACT_LABEL: Record<ApImpact, string> = {
+  alto: "Impacto alto", medio: "Impacto médio", baixo: "Impacto baixo",
+};
+
+// Deriva o grupo a partir do id da recomendação (config:<cat>.<x> | profile:<x>).
+function apGroupOf(id: string): ApGroup {
+  const body = id.replace(/^config:/, "").replace(/^profile:/, "");
+  if (/^(game|nvidia|amd)/.test(body)) return "games";
+  if (/^(memory|cleanup)/.test(body)) return "memory";
+  if (/^network/.test(body)) return "network";
+  return "system";
+}
+
+// Impacto derivado de sinais reais (ganho estimado + texto), sem inventar IA.
+const AP_HIGH_IMPACT_RE = /stutter|travament|latência|input|fps|frametime|frame time/i;
+function apImpactOf(r: Recommendation): ApImpact {
+  if (r.estimated_gain != null && r.estimated_gain >= 4) return "alto";
+  if (AP_HIGH_IMPACT_RE.test(`${r.title} ${r.description} ${r.reason}`)) return "alto";
+  if (r.estimated_gain != null && r.estimated_gain >= 1.5) return "medio";
+  return "baixo";
+}
+
+function extractSkipReason(e: unknown): string {
+  if (typeof e === "object" && e !== null) {
+    const obj = e as Record<string, unknown>;
+    if (typeof obj.message === "string" && obj.message.length > 0) return obj.message;
+    if (typeof obj.error === "string" && obj.error.length > 0) return obj.error;
+  }
+  if (typeof e === "string" && e.length > 0) return e;
+  return "Não disponível nesta versão";
+}
+
+function humanizeSkipReason(reason: string, kind: "already" | "needs_admin" | "unavailable"): string {
+  if (kind === "already") return "Já estava configurado corretamente";
+  if (kind === "needs_admin") return "Requer execução como administrador";
+  const r = reason.toLowerCase();
+  if (r.includes("não encontrada") || r.includes("not found") || r.includes("nenhuma")) {
+    return "Não foi necessária neste computador";
+  }
+  if (r.includes("não suportado") || r.includes("unsupported") || r.includes("incompatível")) {
+    return "Não compatível com este hardware";
+  }
+  if (r.includes("não disponível") || r.includes("unavailable")) {
+    return "Não disponível nesta versão";
+  }
+  if (r.includes("timeout") || r.includes("falhou") || r.includes("failed")) {
+    return "Não foi possível aplicar agora";
+  }
+  return reason.length <= 48 ? reason : reason.slice(0, 46) + "…";
+}
+
 function useAutoPilot() {
-  const [phase, setPhase]   = useState<ApPhase>("idle");
-  const [steps, setSteps]   = useState<ApStep[]>([]);
-  const [error, setError]   = useState<string | null>(null);
+  const [phase, setPhase]       = useState<ApPhase>("idle");
+  const [steps, setSteps]       = useState<ApStep[]>([]);
+  const [error, setError]       = useState<string | null>(null);
+  const [planReady, setPlanReady] = useState(false);
 
   async function plan() {
     if (!isTauri()) return;
     setPhase("planning");
+    setPlanReady(false);
     setError(null);
     try {
       const recs = await invokeCmd<Recommendation[]>("advisor_recommendations");
@@ -46,11 +161,15 @@ function useAutoPilot() {
           id: r.id,
           label: r.title,
           kind: r.kind as "Config" | "Profile",
+          group: apGroupOf(r.id),
+          impact: apImpactOf(r),
           status: "pending",
         })),
       );
     } catch (e: unknown) {
       setError(typeof e === "object" && e !== null && "message" in e ? String((e as { message: unknown }).message) : "Falha ao carregar recomendações.");
+    } finally {
+      setPlanReady(true);
     }
   }
 
@@ -68,16 +187,108 @@ function useAutoPilot() {
           await invokeCmd("opt_run", { id });
         }
         setSteps((prev) => prev.map((s, idx) => idx === i ? { ...s, status: "ok" } : s));
-      } catch {
-        setSteps((prev) => prev.map((s, idx) => idx === i ? { ...s, status: "skip" } : s));
+      } catch (e: unknown) {
+        const reason = extractSkipReason(e);
+        const kind = skipCategory(reason);
+        setSteps((prev) => prev.map((s, idx) => idx === i ? { ...s, status: "skip", skipReason: reason, skipKind: kind } : s));
       }
     }
     setPhase("done");
   }
 
-  function reset() { setPhase("idle"); setSteps([]); setError(null); }
+  function reset() { setPhase("idle"); setSteps([]); setError(null); setPlanReady(false); }
 
-  return { phase, steps, error, plan, run, reset };
+  return { phase, steps, error, planReady, plan, run, reset };
+}
+
+// ── Score Arc — compact dashboard ───────────────────────────────────────────
+
+function ScoreArc({ score, status }: { score: number | undefined; status: { label: string; color: string } }) {
+  const s = score ?? 0;
+  const pct = Math.min(s / 1000, 1);
+  const r = 90;
+  const C = 2 * Math.PI * r;
+  const trackLen = (270 / 360) * C;
+  const fillLen = pct * trackLen;
+  const arcColor = status.color;
+
+  return (
+    <div className="mc-score-wrap">
+      <svg viewBox="0 0 220 220" className="mc-score-arc" aria-hidden="true">
+        <circle cx="110" cy="110" r={r} fill="none"
+          stroke="rgba(255,255,255,0.05)" strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={`${trackLen} ${C}`}
+          transform="rotate(135 110 110)" />
+        {s > 0 && (
+          <circle cx="110" cy="110" r={r} fill="none"
+            stroke={arcColor} strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={`${fillLen} ${C}`}
+            transform="rotate(135 110 110)"
+            style={{
+              filter: `drop-shadow(0 0 5px ${arcColor})`,
+              opacity: 0.9,
+            }} />
+        )}
+      </svg>
+      <div className="mc-score-inner">
+        <span className="mc-score-num">{s > 0 ? s : "—"}</span>
+        <span className="mc-score-denom">/1000</span>
+        <span className="mc-score-state-lbl" style={{ color: arcColor }}>{status.label}</span>
+      </div>
+    </div>
+  );
+}
+
+// ── KpiTile — live hardware metric ───────────────────────────────────────────
+
+function KpiTile({ label, value, unit, warn = 75, crit = 90, invert = false }: {
+  label: string; value: number; unit: string; warn?: number; crit?: number; invert?: boolean;
+}) {
+  const level = invert
+    ? (value <= crit ? "crit" : value <= warn ? "warn" : "ok")
+    : (value >= crit ? "crit" : value >= warn ? "warn" : "ok");
+  const barPct = invert ? Math.max(0, 100 - value) : Math.min(value, 100);
+  return (
+    <div className={`mc-kpi-tile mc-kpi-${level}`}>
+      <span className="mc-kpi-lbl">{label}</span>
+      <div className="mc-kpi-main">
+        <span className="mc-kpi-num">{Math.round(value)}</span>
+        {unit && <span className="mc-kpi-unit">{unit}</span>}
+      </div>
+      <div className="mc-kpi-bar">
+        <div className="mc-kpi-bar-fill" style={{ width: `${barPct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+// ── StatTile — status summary card ───────────────────────────────────────────
+
+function StatTile({ label, value, sub, valueColor }: {
+  label: string; value: string; sub?: string; valueColor?: string;
+}) {
+  return (
+    <div className="mc-stat-tile">
+      <span className="mc-stat-lbl">{label}</span>
+      <strong className="mc-stat-val" style={valueColor ? { color: valueColor } : undefined}>
+        {value}
+      </strong>
+      {sub && <span className="mc-stat-sub">{sub}</span>}
+    </div>
+  );
+}
+
+function commandSub(score?: number, bottleneck?: string): string {
+  if (!score || score === 0) return "Execute uma análise para ver o estado do sistema";
+  if (bottleneck === "Ram")     return "Feche aplicativos em segundo plano para liberar memória";
+  if (bottleneck === "Cpu")     return "Verifique processos consumindo CPU em segundo plano";
+  if (bottleneck === "Gpu")     return "Verifique temperatura e drivers da placa de vídeo";
+  if (bottleneck === "Thermal") return "Limpe o sistema de resfriamento e verifique a pasta térmica";
+  if (score >= 750) return "Nenhum gargalo crítico detectado";
+  if (score >= 500) return "Algumas melhorias disponíveis para este sistema";
+  return "Otimizações recomendadas disponíveis";
 }
 
 /* ---------- helpers (derivações de dado real) ---------- */
@@ -107,39 +318,18 @@ function relTime(ts: number | null): string {
   return `há ${Math.floor(m / 60)} h`;
 }
 
-function bottleneckLine(primary?: string, detail?: string): string {
-  if (!primary) return "Análise de gargalo em curso…";
-  if (primary === "Balanced" || primary === "Inconclusive") return "Nenhum gargalo dominante detectado.";
-  return detail || `${primary} é o fator limitante.`;
-}
-
-function envelopeLine(d: Diagnosis | null): string {
-  if (!d) return "";
-  const n = d.findings.filter((f) => f.severity === "High" || f.severity === "Critical").length;
-  return n === 0 ? "Sistema operando dentro do envelope esperado." : `${n} ponto(s) de atenção identificado(s).`;
-}
-
-const CAP_LABELS: Record<string, string> = {
-  cpu_monitoring:      "Monitoramento da CPU",
-  ram_monitoring:      "Monitoramento da RAM",
-  storage_monitoring:  "Monitoramento de Armazenamento",
-  gpu_monitoring:      "Monitoramento da GPU",
-  thermal_monitoring:  "Sensores Térmicos",
-  fps_measurement:     "Medição de FPS",
-  rollback_protection: "Proteção por Restauração",
-  benchmark_engine:    "Motor de Benchmark",
-  optimization_engine: "Motor de Otimização",
-  admin_privileges:    "Privilégios Administrativos",
+const BOTTLENECK_LABEL: Record<string, string> = {
+  Cpu:     "Processador",
+  Gpu:     "Placa de Vídeo",
+  Ram:     "Memória RAM",
+  Storage: "Armazenamento",
+  Thermal: "Temperatura",
 };
-function capLabel(id: string): string {
-  return CAP_LABELS[id] ?? id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-const CAP: Record<string, { variant: AxBadgeVariant; text: string }> = {
-  ready:       { variant: "ok",      text: "Pronto"        },
-  limited:     { variant: "warn",    text: "Limitado"      },
-  missing:     { variant: "warn",    text: "Não disponível" },
-  unavailable: { variant: "neutral", text: "Indisponível"  },
-};
+
+
+
+
+
 const SNAP_STATUS: Record<string, string> = { active: "Ativo", restored: "Restaurado", expired: "Expirado" };
 
 export function MissionControlPage() {
@@ -147,10 +337,11 @@ export function MissionControlPage() {
   const nav = useNavigate();
   const toast = useAxToast();
   const ap = useAutoPilot();
+  const snap = useLiveSnapshot();
+  const latestFps = useLatestFps();
   const [apOpen, setApOpen] = useState(false);
 
   const st = machineState(m.diag?.score.classification);
-  const findings = m.diag?.findings ?? [];
   const lastBench = m.sessions[0] ?? null;
   const evidenceRun = m.optRuns.find((r) => r.comparison && r.comparison.rows.length > 0) ?? null;
 
@@ -220,85 +411,171 @@ export function MissionControlPage() {
 
       {!m.available && (
         <AxCard className="mc-banner">
-          <AxIcon name="alert" size={16} /> Abra com <span className="ax-data">npm run tauri dev</span> para ver dados reais.
+          <AxIcon name="alert" size={16} /> Abra o aplicativo TkSpeed para ver os dados reais do seu sistema.
         </AxCard>
       )}
 
-      {/* HERO · Machine State */}
-      <AxCard padLg className="mc-hero">
-        <BrandWatermark size={260} opacity={0.03} />
-        <div className="mc-hero-main">
-          <div className="mc-hero-state">
-            <span className="ax-label">Estado da Máquina</span>
-            <strong style={{ color: st.color }}>{st.label}</strong>
-            <p>{bottleneckLine(m.bottleneck?.primary, m.bottleneck?.detail)}</p>
-            <p>{envelopeLine(m.diag)}</p>
-            <p className="mc-hero-meta ax-data">Última validação: {relTime(m.validatedAt)}</p>
-          </div>
-          <div className="mc-hero-vitals">
-            <Vital k="CPU" v={m.tick?.cpu} unit="%" />
-            <Vital k="RAM" v={m.tick?.ram} unit="%" />
-            <Vital k="SSD" v={m.tick?.disk} unit="%" />
-            <Vital k="Temp" v={m.hw?.cpu_temp_c ?? undefined} unit="°C" />
-            <Vital k="Pontuação" v={m.diag?.score.total} unit="/1000" ion />
+      {/* ── LINHA 1: Score compacto + KPIs ao vivo ──────────────────────────── */}
+      <div className="mc-dash-hero">
+        <div className="mc-dash-score">
+          <ScoreArc score={m.diag?.score.total} status={st} />
+          <div className="mc-dash-score-meta">
+            <span className="mc-dash-score-state" style={{ color: st.color }}>{st.label}</span>
+            <p className="mc-dash-score-sub">{commandSub(m.diag?.score.total, m.bottleneck?.primary)}</p>
+            {m.bottleneck && m.bottleneck.primary && m.bottleneck.primary !== "Balanced" && m.bottleneck.primary !== "Inconclusive" && (
+              <div className="mc-bottleneck-chip warn" style={{ marginTop: 4 }}>
+                <span className="mc-bottleneck-dot" />
+                {BOTTLENECK_LABEL[m.bottleneck.primary ?? ""] ?? m.bottleneck.primary} — limitando
+              </div>
+            )}
+            <div className="mc-dash-cta-row">
+              {m.diag ? (
+                <AxButton variant="primary" size="sm" icon="bolt"
+                  onClick={() => { setApOpen(true); ap.plan(); }}
+                  disabled={!m.available || ap.phase !== "idle"}>
+                  Otimizar Agora
+                </AxButton>
+              ) : (
+                <AxButton variant="primary" size="sm" icon="performance"
+                  onClick={onAnalyze} disabled={!m.available || m.analyzing}>
+                  {m.analyzing ? "Analisando…" : "Analisar"}
+                </AxButton>
+              )}
+              {m.diag && (
+                <AxButton size="sm" variant="ghost" icon="performance"
+                  onClick={onAnalyze} disabled={!m.available || m.analyzing}>
+                  Reanalisar
+                </AxButton>
+              )}
+            </div>
+            <p className="mc-cmd-meta ax-data" style={{ marginTop: 4 }}>Validação: {relTime(m.validatedAt)}</p>
           </div>
         </div>
-        {m.diag && findings[0] ? (
-          <div className="mc-hero-cta">
-            <span className="ax-label">Ação recomendada</span>
-            <div className="mc-hero-cta-row">
-              <span>{findings[0].solution}</span>
-              <AxButton variant="primary" icon="arrow-right" onClick={() => nav("/hub")}>Otimizações</AxButton>
-            </div>
-          </div>
-        ) : !m.diag ? (
-          <div className="mc-hero-cta">
-            <span className="ax-label">Começar</span>
-            <div className="mc-hero-cta-row">
-              <span>Rode a primeira análise para avaliar o estado operacional da máquina.</span>
-              <AxButton variant="primary" icon="performance" onClick={onAnalyze} disabled={!m.available || m.analyzing}>
-                {m.analyzing ? "Analisando…" : "Analisar agora"}
-              </AxButton>
-            </div>
+
+        {snap ? (
+          <div className="mc-dash-kpis">
+            <KpiTile label="CPU" value={snap.cpu.usage_pct} unit="%" warn={75} crit={90} />
+            {snap.gpu && <KpiTile label="GPU" value={snap.gpu.usage_pct} unit="%" warn={80} crit={95} />}
+            <KpiTile label="RAM" value={snap.ram.usage_pct} unit="%" warn={80} crit={92} />
+            {(() => {
+              const FPS_RECENT = 10 * 60 * 1000;
+              const fps = latestFps && (Date.now() - latestFps.ts) < FPS_RECENT ? latestFps : null;
+              const fpsAvg = fps ? Math.round(fpsMetricVal(fps, "fps_avg")) : null;
+              return fpsAvg !== null && fpsAvg > 0
+                ? <KpiTile label="FPS" value={fpsAvg} unit="" warn={31} crit={20} invert />
+                : null;
+            })()}
           </div>
         ) : (
-          <div className="mc-hero-cta">
-            <span className="ax-label">Estado Operacional</span>
-            <div className="mc-hero-cta-row">
-              <span>
-                {(m.diag.score.total ?? 0) >= 800
-                  ? "Sistema em ótimo estado — continue monitorando para manter a performance."
-                  : (m.diag.score.total ?? 0) >= 600
-                  ? "Sistema estável. Otimizações disponíveis podem melhorar a pontuação."
-                  : "Sistema funcional. Aplique otimizações para melhorar a performance geral."}
-              </span>
-              <AxButton variant="ghost" icon="hub" onClick={() => nav("/hub")}>Otimizações</AxButton>
-            </div>
+          <div className="mc-dash-kpis-placeholder">
+            <p className="mc-muted" style={{ fontSize: 12 }}>
+              {m.available ? "aguardando dados ao vivo…" : "disponível no app"}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── LINHA 2: Tiles de status — estado, gargalo, saúde, benchmark ───── */}
+      <div className="mc-dash-status-row">
+        <StatTile
+          label="Estado do Sistema"
+          value={m.diag ? st.label : "Aguardando"}
+          valueColor={m.diag ? st.color : "var(--ink-mid)"}
+          sub={m.diag ? `Score ${m.diag.score.total} / 1000` : "Execute uma análise"}
+        />
+        <StatTile
+          label="Gargalo Ativo"
+          value={m.bottleneck
+            ? (m.bottleneck.primary === "Balanced" || m.bottleneck.primary === "Inconclusive"
+              ? "Equilibrado"
+              : BOTTLENECK_LABEL[m.bottleneck.primary ?? ""] ?? m.bottleneck.primary ?? "—")
+            : "—"}
+          valueColor={
+            m.bottleneck?.primary && m.bottleneck.primary !== "Balanced" && m.bottleneck.primary !== "Inconclusive"
+              ? "var(--warn)" : m.bottleneck ? "var(--ok)" : undefined
+          }
+          sub={m.bottleneck
+            ? (m.bottleneck.primary === "Balanced" || m.bottleneck.primary === "Inconclusive"
+              ? "Nenhum limitante detectado"
+              : `CPU ${Math.round(m.bottleneck.cpu_avg)}% · RAM ${Math.round(m.bottleneck.ram_avg)}%`)
+            : "Aguardando diagnóstico"}
+        />
+        <StatTile
+          label="Saúde dos Motores"
+          value={m.caps.length > 0
+            ? `${m.caps.filter((c) => c.status === "ready").length}/${m.caps.length}`
+            : "—"}
+          valueColor={
+            m.caps.length > 0 && m.caps.filter((c) => c.status === "ready").length === m.caps.length
+              ? "var(--ok)"
+              : m.caps.some((c) => c.status !== "ready") ? "var(--warn)" : undefined
+          }
+          sub="capacidades prontas"
+        />
+        <StatTile
+          label="Benchmark"
+          value={m.sessions.length > 0 ? `${m.sessions.length} sessões` : "Sem dados"}
+          valueColor={m.sessions.length >= 3 ? "var(--ok)" : m.sessions.length > 0 ? "var(--warn)" : undefined}
+          sub={lastBench
+            ? `Confiança ${lastBench.confidence}% · ${lastBench.stable ? "estável" : "calibrando"}`
+            : "Execute um benchmark"}
+        />
+      </div>
+
+      {/* ── LINHA 3: Recomendações prioritárias ──────────────────────────────── */}
+      <AxCard className="mc-recs-full">
+        <div className="mc-ci-head">
+          <span className="ax-label">Recomendações Prioritárias</span>
+          {m.recs.length > 0 && <AxBadge variant="ion">{m.recs.length} recomendações</AxBadge>}
+        </div>
+        {m.recsLoading ? (
+          <div className="mc-rec">
+            <div className="mc-rec-skel" />
+            <div className="mc-rec-skel" style={{ opacity: 0.6 }} />
+          </div>
+        ) : !m.available ? (
+          <p className="mc-muted" style={{ marginTop: 14 }}>
+            Indisponível no navegador — abra no app para ver recomendações.
+          </p>
+        ) : m.recs.length === 0 && m.sessions.length === 0 ? (
+          <AxEmptyState
+            icon="bolt"
+            title="Estamos aprendendo sobre sua máquina"
+            description="Execute um benchmark inicial para que o consultor possa avaliar o seu sistema."
+            action={
+              <AxButton size="sm" icon="play" onClick={() => nav("/performance")}>
+                Executar Benchmark
+              </AxButton>
+            }
+          />
+        ) : m.recs.length === 0 ? (
+          <AxEmptyState
+            icon="shield"
+            title="Nenhuma recomendação disponível"
+            description="O sistema está operando dentro do esperado para esta configuração."
+          />
+        ) : (
+          <div className="mc-rec">
+            {m.applyResult && <ApplyResultBanner result={m.applyResult} />}
+            {m.recs.map((rec) => (
+              <RecCard
+                key={rec.id}
+                rec={rec}
+                applying={m.applyingId === rec.id.replace("profile:", "")}
+                onApply={rec.kind === "Profile" ? () => onApplyProfile(rec.id.replace("profile:", "")) : undefined}
+                onNavigate={
+                  rec.kind === "Config" ? () => nav("/hub")
+                  : rec.kind === "Benchmark" ? () => nav("/performance")
+                  : undefined
+                }
+              />
+            ))}
           </div>
         )}
       </AxCard>
 
-      {/* System Capabilities — strip compacto */}
-      <AxCard className="mc-caps">
-        <span className="ax-label">Capacidades do Sistema</span>
-        <div className="mc-caps-grid">
-          {m.caps.length === 0 ? (
-            <span className="mc-muted">{m.available ? "lendo capacidades…" : "indisponível no navegador"}</span>
-          ) : (
-            m.caps.map((c: Capability) => (
-              <div key={c.id} className="mc-cap">
-                <AxBadge variant={CAP[c.status]?.variant ?? "neutral"} dot>
-                  {CAP[c.status]?.text ?? c.status}
-                </AxBadge>
-                <div className="mc-cap-txt">
-                  <strong>{capLabel(c.id)}</strong>
-                  <span>{c.detail}</span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </AxCard>
+      {/* ── Overhead apps (colapsado) ────────────────────────────────────────── */}
+      <HealthAnalysis available={m.available} />
 
       {/* Deck row 1 */}
       <div className="mc-deck">
@@ -357,86 +634,24 @@ export function MissionControlPage() {
         </AxCard>
       </div>
 
-      {/* Deck row 2 */}
-      <div className="mc-deck">
-        <AxCard className="mc-col-7">
-          <div className="mc-ci-head">
-            <span className="ax-label">Consultor Inteligente</span>
-            {m.recs.length > 0 && (
-              <AxBadge variant="ion">{m.recs.length} recomendações</AxBadge>
-            )}
-          </div>
-
-          {m.recsLoading ? (
-            <div className="mc-rec">
-              <div className="mc-rec-skel" />
-              <div className="mc-rec-skel" style={{ opacity: 0.6 }} />
-            </div>
-          ) : !m.available ? (
-            <p className="mc-muted" style={{ marginTop: 14 }}>
-              Indisponível no navegador — abra no app para ver recomendações.
-            </p>
-          ) : m.recs.length === 0 && m.sessions.length === 0 ? (
-            <AxEmptyState
-              icon="bolt"
-              title="Estamos aprendendo sobre sua máquina"
-              description="Execute um benchmark inicial para que o consultor possa avaliar o seu sistema."
-              action={
-                <AxButton size="sm" icon="play" onClick={() => nav("/performance")}>
-                  Executar Benchmark
-                </AxButton>
-              }
-            />
-          ) : m.recs.length === 0 ? (
-            <AxEmptyState
-              icon="shield"
-              title="Nenhuma recomendação disponível"
-              description="O sistema está operando dentro do esperado para esta configuração."
-            />
-          ) : (
-            <div className="mc-rec">
-              {m.applyResult && (
-                <ApplyResultBanner result={m.applyResult} />
-              )}
-              {m.recs.map((rec) => (
-                <RecCard
-                  key={rec.id}
-                  rec={rec}
-                  applying={m.applyingId === rec.id.replace("profile:", "")}
-                  onApply={rec.kind === "Profile" ? () => onApplyProfile(rec.id.replace("profile:", "")) : undefined}
-                  onNavigate={
-                    rec.kind === "Config"
-                      ? () => nav("/hub")
-                      : rec.kind === "Benchmark"
-                      ? () => nav("/performance")
-                      : undefined
-                  }
-                />
-              ))}
-            </div>
-          )}
-        </AxCard>
-
-        <AxCard className="mc-col-5">
+      {/* Evidências de ganho — card standalone */}
+      {evidenceRun && evidenceRun.comparison && (
+        <AxCard>
           <span className="ax-label">Evidências de Ganho</span>
-          {evidenceRun && evidenceRun.comparison ? (
-            <div className="mc-ev">
-              <AxEvidenceCard
-                before={evidenceRun.comparison.rows.map((r) => r.before)}
-                after={evidenceRun.comparison.rows.map((r) => r.after)}
-                verdict={(evidenceRun.comparison.rows.find((r) => r.metric === "cpu_multi")?.verdict ??
-                  evidenceRun.comparison.rows[0].verdict) as AxVerdict}
-                confidence={evidenceRun.comparison.confidence}
-                reliable={evidenceRun.comparison.reliable}
-                deltaPct={evidenceRun.comparison.rows.find((r) => r.metric === "cpu_multi")?.delta_pct ?? evidenceRun.comparison.rows[0].delta_pct}
-              />
-              <p className="mc-muted ax-data">{evidenceRun.name}</p>
-            </div>
-          ) : (
-            <p className="mc-muted">Nenhuma evidência ainda — aplique uma otimização medida.</p>
-          )}
+          <div className="mc-ev">
+            <AxEvidenceCard
+              before={evidenceRun.comparison.rows.map((r) => r.before)}
+              after={evidenceRun.comparison.rows.map((r) => r.after)}
+              verdict={(evidenceRun.comparison.rows.find((r) => r.metric === "cpu_multi")?.verdict ??
+                evidenceRun.comparison.rows[0].verdict) as AxVerdict}
+              confidence={evidenceRun.comparison.confidence}
+              reliable={evidenceRun.comparison.reliable}
+              deltaPct={evidenceRun.comparison.rows.find((r) => r.metric === "cpu_multi")?.delta_pct ?? evidenceRun.comparison.rows[0].delta_pct}
+            />
+            <p className="mc-muted ax-data">{evidenceRun.name}</p>
+          </div>
         </AxCard>
-      </div>
+      )}
 
       {/* Timeline */}
       <AxCard className="mc-timeline">
@@ -463,15 +678,18 @@ export function MissionControlPage() {
         title="Auto Pilot — Otimizar Agora"
         onClose={() => { if (ap.phase !== "running") { setApOpen(false); ap.reset(); } }}
         footer={
-          ap.phase === "planning" ? (
+          ap.phase === "planning" && !ap.planReady ? (
             <>
               <button className="ax-btn ax-btn-ghost" onClick={() => { setApOpen(false); ap.reset(); }}>Cancelar</button>
-              <button
-                className="ax-btn ax-btn-primary"
-                onClick={ap.run}
-                disabled={ap.steps.length === 0}
-              >
-                {ap.steps.length === 0 ? "Analisando…" : `Iniciar ${ap.steps.length} otimização${ap.steps.length > 1 ? "ões" : ""}`}
+              <button className="ax-btn ax-btn-primary" disabled>Analisando…</button>
+            </>
+          ) : ap.phase === "planning" && ap.planReady && ap.steps.length === 0 ? (
+            <button className="ax-btn ax-btn-primary" onClick={() => { setApOpen(false); ap.reset(); }}>Fechar</button>
+          ) : ap.phase === "planning" && ap.planReady ? (
+            <>
+              <button className="ax-btn ax-btn-ghost" onClick={() => { setApOpen(false); ap.reset(); }}>Cancelar</button>
+              <button className="ax-btn ax-btn-primary" onClick={ap.run}>
+                {`Iniciar ${ap.steps.length} otimização${ap.steps.length > 1 ? "ões" : ""}`}
               </button>
             </>
           ) : ap.phase === "done" ? (
@@ -479,7 +697,7 @@ export function MissionControlPage() {
           ) : null
         }
       >
-        <AutoPilotModalBody phase={ap.phase} steps={ap.steps} error={ap.error} />
+        <AutoPilotModalBody phase={ap.phase} steps={ap.steps} error={ap.error} planReady={ap.planReady} />
       </AxModal>
     </div>
   );
@@ -487,10 +705,15 @@ export function MissionControlPage() {
 
 // ── Auto Pilot modal body ────────────────────────────────────────────────────
 
-function AutoPilotModalBody({ phase, steps, error }: { phase: ApPhase; steps: ApStep[]; error: string | null }) {
+function AutoPilotModalBody({
+  phase, steps, error, planReady,
+}: {
+  phase: ApPhase; steps: ApStep[]; error: string | null; planReady: boolean;
+}) {
   if (error) return <p className="mc-ap-error">{error}</p>;
 
-  if (phase === "planning" && steps.length === 0) {
+  // Carregando recomendações
+  if (phase === "planning" && !planReady) {
     return (
       <div className="mc-ap-loading">
         <span className="mc-ap-spin" />
@@ -499,18 +722,65 @@ function AutoPilotModalBody({ phase, steps, error }: { phase: ApPhase; steps: Ap
     );
   }
 
-  if (phase === "planning" && steps.length > 0) {
+  // Planejamento concluído — sistema já está otimizado
+  if (phase === "planning" && planReady && steps.length === 0) {
+    return (
+      <div className="mc-ap-all-clear">
+        <div className="mc-ap-all-clear-icon">✓</div>
+        <strong className="mc-ap-all-clear-title">Sistema bem configurado</strong>
+        <p className="mc-ap-all-clear-desc">
+          Seu sistema está bem configurado. Nenhuma otimização é necessária neste momento.
+        </p>
+      </div>
+    );
+  }
+
+  // Planejamento concluído — há passos a executar
+  if (phase === "planning" && planReady && steps.length > 0) {
+    // Resumo por categoria (Jogos / Memória / Rede / Sistema)
+    const byGroup = (["games", "memory", "network", "system"] as ApGroup[])
+      .map((g) => ({ g, n: steps.filter((s) => s.group === g).length }))
+      .filter((x) => x.n > 0);
+    // Distribuição de impacto
+    const byImpact = (["alto", "medio", "baixo"] as ApImpact[])
+      .map((i) => ({ i, n: steps.filter((s) => s.impact === i).length }))
+      .filter((x) => x.n > 0);
+
     return (
       <div className="mc-ap-plan">
+        <div className="mc-ap-headline">
+          <span className="mc-ap-headline-num">{steps.length}</span>
+          <span className="mc-ap-headline-txt">
+            {steps.length === 1 ? "melhoria encontrada" : "melhorias encontradas"}
+          </span>
+        </div>
+
+        <div className="mc-ap-breakdown">
+          {byGroup.map(({ g, n }) => (
+            <div key={g} className="mc-ap-bd-item">
+              <span className="mc-ap-bd-label">{AP_GROUP_LABEL[g]}</span>
+              <span className="mc-ap-bd-count">{n}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mc-ap-impact-row">
+          {byImpact.map(({ i, n }) => (
+            <span key={i} className={`mc-ap-impact-chip ${i}`}>
+              {AP_IMPACT_LABEL[i]}: {n}
+            </span>
+          ))}
+        </div>
+
         <p className="mc-ap-desc">
-          O Auto Pilot encontrou <strong>{steps.length}</strong> otimização{steps.length > 1 ? "ões" : ""} segura{steps.length > 1 ? "s" : ""} para aplicar. Cada uma será medida antes e depois — revertida automaticamente se não houver ganho.
+          Cada otimização será medida antes e depois — e revertida automaticamente se não houver ganho real.
         </p>
         <ul className="mc-ap-steps">
           {steps.map((s) => (
             <li key={s.id} className="mc-ap-step mc-ap-step-pending">
               <span className="mc-ap-step-ico"><AxIcon name="hub" size={14} /></span>
               <span className="mc-ap-step-lbl">{s.label}</span>
-              <span className="mc-ap-step-kind">{s.kind === "Profile" ? "Perfil" : "Config"}</span>
+              <span className={`mc-ap-step-tag ${s.impact}`}>{AP_GROUP_LABEL[s.group]}</span>
             </li>
           ))}
         </ul>
@@ -519,8 +789,12 @@ function AutoPilotModalBody({ phase, steps, error }: { phase: ApPhase; steps: Ap
   }
 
   if (phase === "running" || phase === "done") {
-    const okCount   = steps.filter((s) => s.status === "ok").length;
-    const skipCount = steps.filter((s) => s.status === "skip").length;
+    const okSteps      = steps.filter((s) => s.status === "ok");
+    const skipSteps    = steps.filter((s) => s.status === "skip");
+    const okCount      = okSteps.length;
+    const alreadyCount = skipSteps.filter((s) => s.skipKind === "already").length;
+    const otherCount   = skipSteps.filter((s) => s.skipKind !== "already").length;
+    const allAlready   = okCount === 0 && alreadyCount === skipSteps.length && skipSteps.length > 0;
 
     return (
       <div className="mc-ap-running">
@@ -528,30 +802,107 @@ function AutoPilotModalBody({ phase, steps, error }: { phase: ApPhase; steps: Ap
           {steps.map((s) => (
             <li
               key={s.id}
-              className={`mc-ap-step mc-ap-step-${s.status}`}
+              className={`mc-ap-step mc-ap-step-${s.status}${s.skipKind === "already" ? " mc-ap-step-already" : ""}`}
             >
               <span className="mc-ap-step-ico">
-                {s.status === "ok"      && <AxIcon name="check" size={14} />}
-                {s.status === "skip"    && <AxIcon name="alert" size={14} />}
-                {s.status === "running" && <span className="mc-ap-spin-sm" />}
-                {s.status === "pending" && <span className="mc-ap-step-dot" />}
+                {s.status === "ok"                          && <AxIcon name="check" size={14} />}
+                {s.status === "skip" && s.skipKind === "already"   && <AxIcon name="check" size={14} />}
+                {s.status === "skip" && s.skipKind !== "already"   && <AxIcon name="alert" size={14} />}
+                {s.status === "running"                     && <span className="mc-ap-spin-sm" />}
+                {s.status === "pending"                     && <span className="mc-ap-step-dot" />}
               </span>
               <span className="mc-ap-step-lbl">{s.label}</span>
               {s.status === "running" && <span className="mc-ap-step-status">aplicando…</span>}
               {s.status === "ok"      && <span className="mc-ap-step-status ok">aplicado</span>}
-              {s.status === "skip"    && <span className="mc-ap-step-status skip">pulado</span>}
+              {s.status === "skip" && s.skipKind === "already" && (
+                <span className="mc-ap-step-status already">já configurado</span>
+              )}
+              {s.status === "skip" && s.skipKind !== "already" && (
+                <span className="mc-ap-step-status skip" title={s.skipReason}>
+                  {humanizeSkipReason(s.skipReason ?? "Não disponível", s.skipKind ?? "unavailable")}
+                </span>
+              )}
             </li>
           ))}
         </ul>
 
         {phase === "done" && (
-          <div className="mc-ap-result">
-            <AxIcon name="check" size={16} />
-            <span>
-              {okCount > 0
-                ? `${okCount} otimização${okCount > 1 ? "ões" : ""} aplicada${okCount > 1 ? "s" : ""} com sucesso${skipCount > 0 ? ` · ${skipCount} pulada${skipCount > 1 ? "s" : ""}` : ""}.`
-                : "Nenhuma otimização pôde ser aplicada no momento."}
-            </span>
+          <div className="mc-ap-summary">
+            <div className="mc-ap-wow">
+              <div className="mc-ap-wow-icon">✓</div>
+              <div className="mc-ap-wow-headline">SISTEMA OTIMIZADO</div>
+              <div className="mc-ap-wow-stats">
+                <div>
+                  <strong>{okCount}</strong>
+                  <span>{okCount === 1 ? "melhoria aplicada" : "melhorias aplicadas"}</span>
+                </div>
+                <div>
+                  <strong>{steps.filter((s) => s.status === "skip" && s.skipKind !== "already").length === 0 ? "0" : steps.filter((s) => s.status === "skip" && s.skipKind !== "already").length}</strong>
+                  <span>problemas críticos</span>
+                </div>
+              </div>
+            </div>
+            {(() => {
+              const total = steps.length;
+              const satisfied = okCount + alreadyCount;
+              const pct = total > 0 ? Math.round((satisfied / total) * 100) : 100;
+              return (
+                <div className="mc-ap-optimized">
+                  <div className="mc-ap-optimized-ring" style={{ ["--pct" as string]: pct }}>
+                    <span>{pct}%</span>
+                  </div>
+                  <div className="mc-ap-optimized-txt">
+                    <strong>Seu sistema está {pct}% otimizado</strong>
+                    <span>com base nas otimizações seguras recomendadas.</span>
+                  </div>
+                </div>
+              );
+            })()}
+            <div className="mc-ap-summary-counts">
+              {okCount > 0 && (
+                <div className="mc-ap-count ok">
+                  <strong>{okCount}</strong>
+                  <span>{okCount === 1 ? "aplicada" : "aplicadas"}</span>
+                </div>
+              )}
+              {alreadyCount > 0 && (
+                <div className="mc-ap-count already">
+                  <strong>{alreadyCount}</strong>
+                  <span>{alreadyCount === 1 ? "já estava configurada" : "já estavam configuradas"}</span>
+                </div>
+              )}
+              {otherCount > 0 && (
+                <div className="mc-ap-count dim">
+                  <strong>{otherCount}</strong>
+                  <span>{otherCount === 1 ? "não disponível" : "não disponíveis"}</span>
+                </div>
+              )}
+            </div>
+
+            {okSteps.length > 0 && (
+              <div className="mc-ap-changes">
+                <span className="mc-ap-changes-lbl">Mudanças realizadas</span>
+                <ul className="mc-ap-changes-list">
+                  {okSteps.map((s) => (
+                    <li key={s.id}>
+                      <AxIcon name="check" size={12} />
+                      {s.label}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {allAlready && (
+              <p className="mc-ap-no-change ok">
+                Ótimo — todas as otimizações seguras já estavam configuradas corretamente. Seu sistema está em ótimo estado.
+              </p>
+            )}
+            {okCount === 0 && !allAlready && otherCount > 0 && (
+              <p className="mc-ap-no-change">
+                Nenhuma otimização pôde ser aplicada. Verifique se o app está rodando como administrador para otimizações que requerem privilégios elevados.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -573,12 +924,21 @@ const RISK_LABEL: Record<string, string> = {
   moderate: "Moderado",
   advanced: "Avançado",
 };
-const KIND_LABEL: Record<string, string> = {
-  Config: "Config",
-  Profile: "Perfil",
-  Benchmark: "Benchmark",
-  Maintenance: "Manutenção",
-};
+
+function confidenceTier(c: number): { label: string; variant: AxBadgeVariant } {
+  if (c >= 80) return { label: "Confiança Muito Alta", variant: "ok" };
+  if (c >= 60) return { label: "Confiança Alta", variant: "ok" };
+  if (c >= 30) return { label: "Confiança Média", variant: "warn" };
+  return { label: c === 0 ? "Sem dados anteriores" : "Confiança Baixa", variant: "neutral" };
+}
+
+function skipCategory(reason?: string): "already" | "needs_admin" | "unavailable" {
+  if (!reason) return "unavailable";
+  const r = reason.toLowerCase();
+  if (r.includes("já") || r.includes("already")) return "already";
+  if (r.includes("requer") || r.includes("admin")) return "needs_admin";
+  return "unavailable";
+}
 
 function RecCard({
   rec,
@@ -592,33 +952,36 @@ function RecCard({
   onNavigate?: () => void;
 }) {
   const hasGain = rec.estimated_gain !== null && rec.estimated_gain !== undefined;
-  const gainStr = hasGain ? `+${rec.estimated_gain!.toFixed(1)}%` : "—";
+  const gainStr = hasGain ? `+${rec.estimated_gain!.toFixed(1)}%` : null;
+  const tier = confidenceTier(rec.confidence);
 
   return (
     <div className="mc-rec-item">
       <div className="mc-rec-head">
         <strong>{rec.title}</strong>
         <div className="mc-rec-badges">
-          <AxBadge variant="neutral">{KIND_LABEL[rec.kind] ?? rec.kind}</AxBadge>
           <AxBadge variant={RISK_VARIANT[rec.risk] ?? "neutral"}>{RISK_LABEL[rec.risk] ?? rec.risk}</AxBadge>
+          <AxBadge variant={tier.variant}>{tier.label}</AxBadge>
           {rec.requires_reboot && <AxBadge variant="warn">Requer reinicialização</AxBadge>}
         </div>
       </div>
 
-      <p className="mc-rec-desc">{rec.description}</p>
-
-      <div className="mc-rec-metrics">
-        <div className="mc-rec-metric">
-          <span>Confiança</span>
-          <strong className={rec.confidence === 0 ? "dim" : ""}>{rec.confidence}%</strong>
-        </div>
-        <div className="mc-rec-metric">
-          <span>Ganho estimado</span>
-          <strong className={!hasGain ? "dim" : ""}>{gainStr}</strong>
-        </div>
+      <div className="mc-rec-explain">
+        <span className="mc-rec-explain-lbl">O que faz</span>
+        <p>{rec.description}</p>
       </div>
 
-      <p className="mc-rec-reason">{rec.reason}</p>
+      <div className="mc-rec-explain">
+        <span className="mc-rec-explain-lbl">Por que recomendamos</span>
+        <p>{rec.reason}</p>
+      </div>
+
+      {gainStr && (
+        <div className="mc-rec-gain">
+          <span className="mc-rec-gain-lbl">Ganho típico observado nesta máquina</span>
+          <strong className="mc-rec-gain-val">{gainStr}</strong>
+        </div>
+      )}
 
       <div className="mc-rec-actions">
         {onApply && (
@@ -633,6 +996,103 @@ function RecCard({
         )}
       </div>
     </div>
+  );
+}
+
+// ── FASE 2: Perceived Performance — Overhead Apps ─────────────────────────────
+
+type HeavyAppDetected = {
+  name: string;
+  exe: string;
+  impact: "baixo" | "medio" | "alto";
+  description: string;
+};
+
+function useHeavyApps(available: boolean) {
+  const [apps, setApps] = useState<HeavyAppDetected[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function detect() {
+    if (!available) return;
+    setLoading(true);
+    try {
+      const result = await invokeCmd<HeavyAppDetected[]>("detect_heavy_apps", {});
+      setApps(result ?? []);
+    } catch {
+      setApps([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return { apps, loading, detect };
+}
+
+const IMPACT_BADGE: Record<string, AxBadgeVariant> = { alto: "risk", medio: "warn", baixo: "ok" };
+const IMPACT_LABEL_MAP: Record<string, string> = { alto: "Alto", medio: "Médio", baixo: "Baixo" };
+
+function HealthAnalysis({ available }: { available: boolean }) {
+  const { apps, loading, detect } = useHeavyApps(available);
+
+  const altoCount  = apps?.filter((a) => a.impact === "alto").length ?? 0;
+  const medioCount = apps?.filter((a) => a.impact === "medio").length ?? 0;
+
+  const headerVariant: AxBadgeVariant = altoCount > 0 ? "risk" : medioCount > 0 ? "warn" : apps !== null ? "ok" : "neutral";
+  const headerLabel = apps === null
+    ? "Não verificado"
+    : apps.length === 0
+    ? "Limpo"
+    : `${apps.length} processo${apps.length > 1 ? "s" : ""} detectado${apps.length > 1 ? "s" : ""}`;
+
+  return (
+    <AxCard className="mc-health">
+      <div className="mc-health-head">
+        <span className="ax-label">Apps com Overhead em Execução</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <AxBadge variant={headerVariant}>{headerLabel}</AxBadge>
+          <AxButton size="sm" variant="ghost" icon="refresh" onClick={detect} disabled={loading || !available}>
+            {loading ? "Verificando…" : apps === null ? "Verificar" : "Atualizar"}
+          </AxButton>
+        </div>
+      </div>
+
+      {apps === null && !loading && (
+        <p className="mc-muted" style={{ marginTop: 12, fontSize: 13 }}>
+          Clique em "Verificar" para detectar overlays e apps de alta prioridade em execução agora.
+        </p>
+      )}
+
+      {loading && (
+        <p className="mc-muted" style={{ marginTop: 12, fontSize: 13 }}>Verificando processos em execução…</p>
+      )}
+
+      {apps !== null && apps.length === 0 && (
+        <p className="mc-muted" style={{ marginTop: 12, fontSize: 13, color: "var(--ok)" }}>
+          Nenhum overlay ou app de overhead detectado em execução neste momento.
+        </p>
+      )}
+
+      {apps !== null && apps.length > 0 && (
+        <div className="mc-health-list">
+          {apps.map((app) => (
+            <div key={app.exe} className={`mc-health-item ${app.impact === "alto" ? "mc-health-warn" : "mc-health-ok"}`}>
+              <span className="mc-health-ico">
+                <AxIcon name={app.impact === "alto" ? "alert" : app.impact === "medio" ? "alert" : "check"} size={13} />
+              </span>
+              <div className="mc-health-text">
+                <span className="mc-health-label">
+                  {app.name}&nbsp;
+                  <AxBadge variant={IMPACT_BADGE[app.impact] ?? "neutral"} dot>
+                    {IMPACT_LABEL_MAP[app.impact] ?? app.impact}
+                  </AxBadge>
+                </span>
+                <span className="mc-health-detail">{app.description}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </AxCard>
   );
 }
 
@@ -675,20 +1135,6 @@ function ApplyResultBanner({ result }: { result: ProfileApplyResult }) {
     <div className="mc-apply-result neutral">
       <strong>Resultado inconclusivo</strong>
       <p>Dados insuficientes para determinar ganho — perfil mantido ativo.</p>
-    </div>
-  );
-}
-
-// ── Existing helpers ─────────────────────────────────────────────────────────
-
-function Vital({ k, v, unit, ion = false }: { k: string; v?: number; unit: string; ion?: boolean }) {
-  return (
-    <div className={`mc-vital${ion ? " ion" : ""}`}>
-      <span className="mc-vital-k">{k}</span>
-      <span className="mc-vital-v">
-        {v === undefined || v === null ? "—" : Math.round(v)}
-        <small>{unit}</small>
-      </span>
     </div>
   );
 }

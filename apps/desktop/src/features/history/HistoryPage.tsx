@@ -6,6 +6,18 @@ function fmtTime(ts: number): string {
   try { return new Date(ts).toLocaleString(); } catch { return "—"; }
 }
 
+const SUITE_LABEL: Record<string, string> = {
+  "cpu-1.0.0":  "Processador",
+  "full-1.0.0": "Completo",
+  "ram-1.0.0":  "Memória",
+  "gpu-1.0.0":  "GPU",
+  "cpu":        "Processador",
+  "full":       "Completo",
+};
+function suiteLabel(kind: string): string {
+  return SUITE_LABEL[kind] ?? "Benchmark";
+}
+
 const CLASS_LABEL: Record<string, string> = {
   Elite:     "Elite",
   Excelente: "Excelente",
@@ -38,7 +50,7 @@ export function HistoryPage() {
       {!available && (
         <div className="hist-banner">
           <AxIcon name="alert" size={15} />
-          Abra com <span className="mono">npm run tauri dev</span> para ver o histórico real.
+          Abra o aplicativo TkSpeed para ver o histórico real.
         </div>
       )}
 
@@ -87,7 +99,7 @@ export function HistoryPage() {
               <li key={b.id} className="hist-row">
                 <span className="hist-when mono">{fmtTime(b.ts)}</span>
                 <span className="hist-bench-label">{b.label}</span>
-                <span className="hist-bench-kind">{b.kind}</span>
+                <span className="hist-bench-kind">{suiteLabel(b.kind)}</span>
                 <AxBadge variant={b.stable ? "ok" : "warn"}>conf. {b.confidence}%</AxBadge>
               </li>
             ))}
