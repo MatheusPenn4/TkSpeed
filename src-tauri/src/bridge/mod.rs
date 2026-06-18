@@ -103,6 +103,11 @@ pub async fn analyze_full(state: State<'_, AppContext>) -> Cmd<Diagnosis> {
 
     // Janela de telemetria; se vazia (logo após abrir), faz uma leitura imediata.
     let mut window = ctx.recent_window();
+    // Usa apenas os últimos 30 ticks (~30 s) para análise consistente entre reanálises.
+    // Sem esse limite, ticks ociosos acumulados inflam o score a cada clique.
+    if window.len() > 30 {
+        window.drain(..window.len() - 30);
+    }
     if window.is_empty() {
         let mut sampler = SysinfoSampler::new();
         window.push(sampler.read());
@@ -512,22 +517,28 @@ const KNOWN_GAMES: &[&str] = &[
     "valorant",
     "csgo",
     "cs2",
-    "fortniteclient-win64-shipping",
+    "fortniteclient",
     "cod",
     "modernwarfare",
     "warzone",
     "r5apex",
-    "leagueclient",
-    "leagueclientux",
-    "riotclientservices",
+    "league",       // LeagueClient.exe, League of Legends.exe
+    "riotclient",
     "overwatch",
     "overwatch2",
     "eldenring",
     "cyberpunk2077",
     "rdr2",
-    "gtav",
+    "gta5",         // era "gtav" — não batia com GTA5.exe
     "minecraft",
     "javaw",
+    "dota2",
+    "tslgame",      // PUBG
+    "rocketleague",
+    "rainbowsix",
+    "deadbydaylight",
+    "destiny2",
+    "steam_api",    // jogos genéricos Steam que usam overlay
 ];
 
 /// Detecta jogos conhecidos atualmente em execução.
@@ -544,7 +555,10 @@ pub async fn detect_games() -> Cmd<Vec<DetectedGame>> {
                 .and_then(|p| p.file_stem())
                 .map(|s| s.to_string_lossy().to_lowercase())
                 .unwrap_or_default();
-            if KNOWN_GAMES.iter().any(|g| exe_name.contains(g)) {
+            // proc.name() sempre disponível; proc.exe() pode ser None em processos protegidos
+            let proc_name = proc.name().to_string_lossy().to_lowercase();
+            let combined = format!("{exe_name} {proc_name}");
+            if KNOWN_GAMES.iter().any(|g| combined.contains(g)) {
                 games.push(DetectedGame {
                     pid: pid.as_u32(),
                     name: proc.name().to_string_lossy().to_string(),
@@ -1182,26 +1196,31 @@ pub async fn monitor_live_snapshot() -> Cmd<LiveSnapshot> {
 
         // Jogos em execução (reutiliza sys)
         const GAME_EXES: &[(&str, &str)] = &[
-            ("valorant",       "VALORANT"),
-            ("cs2",            "Counter-Strike 2"),
-            ("fortnite",       "Fortnite"),
-            ("leagueoflegends", "League of Legends"),
-            ("dota2",          "Dota 2"),
-            ("r5apex",         "Apex Legends"),
-            ("modernwarfare",  "Call of Duty"),
-            ("cod",            "Call of Duty"),
-            ("rainbowsix",     "Rainbow Six Siege"),
-            ("tslgame",        "PUBG"),
-            ("rocketleague",   "Rocket League"),
-            ("overwatch",      "Overwatch 2"),
-            ("eldenring",      "Elden Ring"),
-            ("cyberpunk2077",  "Cyberpunk 2077"),
-            ("rdr2",           "Red Dead Redemption 2"),
-            ("gta5",           "GTA V"),
-            ("javaw",          "Minecraft"),
-            ("minecraft",      "Minecraft"),
-            ("deadbydaylight", "Dead by Daylight"),
-            ("destiny2",       "Destiny 2"),
+            ("valorant",          "VALORANT"),
+            ("cs2",               "Counter-Strike 2"),
+            ("csgo",              "CS:GO"),
+            ("fortniteclient",    "Fortnite"),
+            ("league of legends", "League of Legends"),  // file_stem com espaços
+            ("leagueclient",      "League of Legends"),  // launcher
+            ("dota2",             "Dota 2"),
+            ("r5apex",            "Apex Legends"),
+            ("modernwarfare",     "Call of Duty"),
+            ("cod",               "Call of Duty"),
+            ("rainbowsix",        "Rainbow Six Siege"),
+            ("tslgame",           "PUBG"),
+            ("rocketleague",      "Rocket League"),
+            ("overwatch",         "Overwatch 2"),
+            ("eldenring",         "Elden Ring"),
+            ("cyberpunk2077",     "Cyberpunk 2077"),
+            ("rdr2",              "Red Dead Redemption 2"),
+            ("gta5",              "GTA V"),
+            ("javaw",             "Minecraft"),
+            ("minecraft",         "Minecraft"),
+            ("deadbydaylight",    "Dead by Daylight"),
+            ("destiny2",          "Destiny 2"),
+            ("battlefront",       "Star Wars Battlefront II"),
+            ("squadgame",         "Squad"),
+            ("tarkov",            "Escape from Tarkov"),
         ];
         let mut running_games: Vec<DetectedGame> = Vec::new();
         let mut seen_g = std::collections::HashSet::new();
@@ -1210,8 +1229,11 @@ pub async fn monitor_live_snapshot() -> Cmd<LiveSnapshot> {
                 .and_then(|p| p.file_stem())
                 .map(|s| s.to_string_lossy().to_lowercase())
                 .unwrap_or_default();
+            // Combina exe + proc.name() para detectar jogos mesmo sem acesso ao caminho do exe
+            let pname = proc.name().to_string_lossy().to_lowercase();
+            let combined = format!("{exe} {pname}");
             for (fragment, name) in GAME_EXES {
-                if !seen_g.contains(fragment) && exe.contains(fragment) {
+                if !seen_g.contains(fragment) && combined.contains(fragment) {
                     seen_g.insert(*fragment);
                     running_games.push(DetectedGame {
                         pid:  pid.as_u32(),
