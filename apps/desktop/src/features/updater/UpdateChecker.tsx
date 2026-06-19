@@ -66,9 +66,13 @@ export function UpdateChecker() {
   // Check for update on mount
   useEffect(() => {
     check()
-      .then(u => { if (u?.available) { setUpdate(u); setPhase('available') } })
+      .then(u => {
+        console.log('[Updater] check() result:', JSON.stringify({ available: u?.available, version: u?.version, currentVersion: u?.currentVersion }))
+        if (u?.available) { setUpdate(u); setPhase('available') }
+      })
       .catch((e: unknown) => {
         const msg = e instanceof Error ? e.message : String(e)
+        console.error('[Updater] check() error:', msg)
         // Ignora "no update" — só expõe erros reais (ex: falha de assinatura)
         if (!msg.toLowerCase().includes('no update')) {
           setErrMsg(msg)

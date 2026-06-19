@@ -30,6 +30,18 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
+      - name: Extrair versão da tag
+        id: ver
+        run: echo "v=$('${{ github.ref_name }}'.TrimStart('v'))" >> $env:GITHUB_OUTPUT
+
+      - name: Sincronizar versão no tauri.conf.json
+        run: |
+          $v = "${{ steps.ver.outputs.v }}"
+          $json = Get-Content "src-tauri/tauri.conf.json" | ConvertFrom-Json
+          $json.version = $v
+          $json | ConvertTo-Json -Depth 10 | Out-File "src-tauri/tauri.conf.json" -Encoding utf8NoBOM
+          Write-Host "Versão definida: $v"
+
       - name: Instalar dependências frontend
         working-directory: apps/desktop
         run: pnpm install
@@ -39,10 +51,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --bundles nsis
-
-      - name: Extrair versão da tag
-        id: ver
-        run: echo "v=$('${{ github.ref_name }}'.TrimStart('v'))" >> $env:GITHUB_OUTPUT
 
       - name: Criar GitHub Release com instaladores
         uses: softprops/action-gh-release@v2
