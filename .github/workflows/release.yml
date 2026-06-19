@@ -52,6 +52,9 @@ jobs:
             target/release/bundle/nsis/TkSpeed_*_x64-setup.exe
             target/release/bundle/nsis/TkSpeed_*_x64-setup.exe.sig
 
+      - name: Listar artefatos gerados
+        run: Get-ChildItem "target/release/bundle/nsis/" | Select-Object Name
+
       - name: Checkout site TkSpeed
         uses: actions/checkout@v4
         with:
@@ -62,8 +65,10 @@ jobs:
       - name: Atualizar update.json no site
         run: |
           $v = "${{ steps.ver.outputs.v }}"
-          # Lê o .sig completo (arquivo multiline) sem passar por GitHub Output
-          $sig = (Get-Content "target/release/bundle/nsis/TkSpeed_${v}_x64-setup.exe.sig" -Raw).Trim()
+          # Busca o .sig por glob — nome pode variar por versão/plataforma
+          $sigFile = Get-ChildItem "target/release/bundle/nsis/" -Filter "*.exe.sig" | Select-Object -First 1
+          if (-not $sigFile) { throw "Arquivo .sig não encontrado em target/release/bundle/nsis/" }
+          $sig = (Get-Content $sigFile.FullName -Raw).Trim()
           $date = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
           $repo = "${{ github.repository }}"
           $url = "https://github.com/${repo}/releases/download/v${v}/TkSpeed_${v}_x64-setup.exe"
