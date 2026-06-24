@@ -60,22 +60,10 @@ config_def!(
     }
 );
 
-config_def!(
-    MemoryStandbyFlush,
-    ConfigMeta {
-        id: "memory_standby_flush",
-        name: "Liberação de Memória em Espera",
-        description: "Libera a lista de espera da memória (standby list) quando acima \
-                      do threshold configurado. Elimina micro-stutters causados por \
-                      paginação em standby.",
-        category: ConfigCategory::Memory,
-        risk: ConfigRisk::Safe,
-        reversible: true,
-        requires_reboot: false,
-        requires_elevation: true,
-        benchmark_relevance: &["ram_latency", "frame_time"],
-    }
-);
+// NOTA: `memory_standby_flush` foi REMOVIDO do Config Registry — é uma ação
+// one-shot IRREVERSÍVEL (libera a standby list), não uma config persistente
+// reversível. Continua disponível como comando avulso `ram_flush_standby`
+// (Memory Manager). Manter aqui violaria o contrato `reversible` das configs.
 
 config_def!(
     VisualEffectsGaming,
@@ -155,7 +143,8 @@ config_def!(
         risk: ConfigRisk::Safe,
         reversible: true,
         requires_reboot: false,
-        requires_elevation: true,
+        // powercfg /setactive para um esquema existente NÃO exige admin (P2.4).
+        requires_elevation: false,
         benchmark_relevance: &["cpu_multi", "cpu_single", "fps"],
     }
 );
@@ -171,7 +160,8 @@ config_def!(
         risk: ConfigRisk::Safe,
         reversible: true,
         requires_reboot: false,
-        requires_elevation: true,
+        // powercfg /setactive para um esquema existente NÃO exige admin (P2.4).
+        requires_elevation: false,
         benchmark_relevance: &["cpu_multi", "cpu_single"],
     }
 );
@@ -187,7 +177,8 @@ config_def!(
         risk: ConfigRisk::Safe,
         reversible: true,
         requires_reboot: false,
-        requires_elevation: true,
+        // powercfg /setactive para um esquema existente NÃO exige admin (P2.4).
+        requires_elevation: false,
         benchmark_relevance: &["cpu_single"],
     }
 );
@@ -205,7 +196,6 @@ impl ConfigRegistry {
         Self {
             entries: vec![
                 Box::new(GpuHardwareScheduling),
-                Box::new(MemoryStandbyFlush),
                 Box::new(VisualEffectsGaming),
                 Box::new(CpuCoreParking),
                 Box::new(TimerResolution),
@@ -299,8 +289,17 @@ mod tests {
     // ── Contagem e cobertura ────────────────────────────────────────────────────────────
 
     #[test]
-    fn registry_has_nine_configs() {
-        assert_eq!(reg().all().len(), 9);
+    fn registry_has_eight_configs() {
+        // 9 originais − memory_standby_flush (removido: ação irreversível).
+        assert_eq!(reg().all().len(), 8);
+    }
+
+    #[test]
+    fn memory_standby_flush_not_in_registry() {
+        assert!(
+            reg().find("memory_standby_flush").is_none(),
+            "memory_standby_flush é one-shot irreversível — não pode ser config de perfil"
+        );
     }
 
     #[test]
@@ -309,7 +308,7 @@ mod tests {
         let mut ids: Vec<&str> = r.all_meta().iter().map(|m| m.id).collect();
         ids.sort_unstable();
         ids.dedup();
-        assert_eq!(ids.len(), 9, "IDs duplicados detectados");
+        assert_eq!(ids.len(), 8, "IDs duplicados detectados");
     }
 
     #[test]
@@ -406,11 +405,11 @@ mod tests {
     }
 
     #[test]
-    fn by_max_risk_safe_returns_seven() {
+    fn by_max_risk_safe_returns_six() {
         let r = reg();
         let safe = r.by_max_risk(&ConfigRisk::Safe);
-        // 9 total − 2 moderate (timer_resolution, hpet) = 7
-        assert_eq!(safe.len(), 7);
+        // 8 total − 2 moderate (timer_resolution, hpet) = 6
+        assert_eq!(safe.len(), 6);
         for c in &safe {
             assert_ne!(
                 c.meta().risk,
@@ -423,8 +422,8 @@ mod tests {
 
     #[test]
     fn by_max_risk_moderate_includes_all() {
-        // Nenhuma config é Advanced — Moderate inclui todas as 9.
-        assert_eq!(reg().by_max_risk(&ConfigRisk::Moderate).len(), 9);
+        // Nenhuma config é Advanced — Moderate inclui todas as 8.
+        assert_eq!(reg().by_max_risk(&ConfigRisk::Moderate).len(), 8);
     }
 
     // ── Reboot ───────────────────────────────────────────────────────────────────────
@@ -446,6 +445,24 @@ mod tests {
     #[test]
     fn reboot_count_is_three() {
         assert_eq!(reg().reboot_required_count(), 3);
+    }
+
+    // ── Elevação (P2.4) ──────────────────────────────────────────────────────
+
+    #[test]
+    fn power_plans_do_not_require_elevation() {
+        let r = reg();
+        for id in [
+            "power_plan_high_performance",
+            "power_plan_balanced",
+            "power_plan_power_saver",
+        ] {
+            let c = r.find(id).expect("power plan deve existir");
+            assert!(
+                !c.meta().requires_elevation,
+                "{id} não deve exigir admin — powercfg /setactive para esquema existente dispensa elevação"
+            );
+        }
     }
 
     // ── eligible_for_auto_evidence ───────────────────────────────────────────────────
@@ -479,18 +496,16 @@ mod tests {
     // ── eligible_for_profiles ────────────────────────────────────────────────────────
 
     #[test]
-    fn eligible_with_all_capabilities_returns_all_nine() {
-        let caps = &["fps", "frame_time", "cpu_multi", "cpu_single", "ram_latency"];
-        assert_eq!(reg().eligible_for_profiles(caps).len(), 9);
+    fn eligible_with_all_capabilities_returns_all_eight() {
+        let caps = &["fps", "frame_time", "cpu_multi", "cpu_single"];
+        assert_eq!(reg().eligible_for_profiles(caps).len(), 8);
     }
 
     #[test]
-    fn eligible_with_only_cpu_multi_excludes_memory_and_gpu() {
+    fn eligible_with_only_cpu_multi_excludes_gpu() {
         let r = reg();
         let eligible = r.eligible_for_profiles(&["cpu_multi"]);
         let ids: Vec<&str> = eligible.iter().map(|c| c.meta().id).collect();
-        // memory_standby_flush: ram_latency + frame_time — sem cpu_multi
-        assert!(!ids.contains(&"memory_standby_flush"));
         // gpu_hardware_scheduling: fps + frame_time — sem cpu_multi
         assert!(!ids.contains(&"gpu_hardware_scheduling"));
         // visual_effects_gaming: fps + cpu_multi — tem cpu_multi
@@ -518,7 +533,7 @@ mod tests {
     #[test]
     fn apply_returns_not_implemented() {
         assert!(matches!(
-            MemoryStandbyFlush.apply(&Value::Null),
+            CpuCoreParking.apply(&Value::Null),
             Err(ConfigError::NotImplemented(_))
         ));
     }

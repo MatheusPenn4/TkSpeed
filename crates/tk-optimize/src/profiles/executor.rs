@@ -3,13 +3,18 @@
 //! Configs que requerem HKLM (elevação) ou chamadas de kernel são marcadas como
 //! Unsupported nesta versão. Configs HKCU e power-plan são totalmente suportadas.
 
-use tk_platform_win::power;
+use tk_platform_win::{elevation, power, registry_hklm};
 use tk_rollback::ReversibleAction;
 
 // GUIDs padrão dos planos de energia do Windows (imutáveis em todas as versões).
 pub const GUID_HIGH_PERF: &str = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c";
 pub const GUID_BALANCED: &str = "381b4222-f694-41f0-9685-ff5bb260df2e";
 pub const GUID_POWER_SAVER: &str = "a1841308-3541-4fab-bc81-f71556f20b4a";
+
+// HAGS (Hardware-Accelerated GPU Scheduling) — HKLM DWORD, exige admin + reboot.
+const HAGS_SUBKEY: &str = "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers";
+const HAGS_NAME: &str = "HwSchMode";
+const HAGS_ON: u32 = 2; // 2 = habilitado; 1 = desabilitado; ausente = padrão do driver.
 
 /// Resultado da tentativa de construir uma ação para um config_id.
 pub enum ConfigAction {
@@ -28,20 +33,15 @@ pub fn build_action(config_id: &str) -> Result<ConfigAction, String> {
         "power_plan_high_performance" => power_plan(GUID_HIGH_PERF),
         "power_plan_balanced" => power_plan(GUID_BALANCED),
         "power_plan_power_saver" => power_plan(GUID_POWER_SAVER),
-        "gpu_hardware_scheduling" => Ok(ConfigAction::Unsupported {
-            reason: "requer chave HKLM — suporte de elevação pendente",
-        }),
+        "gpu_hardware_scheduling" => gpu_hardware_scheduling(),
         "timer_resolution" => Ok(ConfigAction::Unsupported {
-            reason: "requer chave HKLM — suporte de elevação pendente",
+            reason: "requer NtSetTimerResolution — não implementado nesta versão",
         }),
         "cpu_core_parking" => Ok(ConfigAction::Unsupported {
-            reason: "requer chave HKLM — suporte de elevação pendente",
+            reason: "requer powercfg de núcleos — não implementado nesta versão",
         }),
         "hpet" => Ok(ConfigAction::Unsupported {
-            reason: "requer bcdedit — suporte de elevação pendente",
-        }),
-        "memory_standby_flush" => Ok(ConfigAction::Unsupported {
-            reason: "requer chamada de kernel não disponível nesta versão",
+            reason: "requer bcdedit — não implementado nesta versão",
         }),
         "visual_effects_gaming" => visual_effects(),
         _ => Ok(ConfigAction::Unsupported {
@@ -64,12 +64,41 @@ fn power_plan(target_guid: &'static str) -> Result<ConfigAction, String> {
     }))
 }
 
+/// HAGS — grava `HwSchMode=2` em HKLM. Exige administrador.
+///
+/// Sem elevação NÃO tentamos aplicar: a escrita HKLM falharia no `apply_actions`
+/// e dispararia rollback + erro. Retornamos `Unsupported` com motivo claro para
+/// que o Profile Engine marque a config como *skipped* (nunca como sucesso).
+/// A leitura do valor antigo é feita aqui (HKLM read é permitido) e capturada
+/// para rollback; o efeito completo só ocorre após reinicialização.
+fn gpu_hardware_scheduling() -> Result<ConfigAction, String> {
+    if !elevation::is_elevated() {
+        return Ok(ConfigAction::Unsupported {
+            reason: "requer privilégios de administrador (execute o TkSpeed como administrador)",
+        });
+    }
+    let old = registry_hklm::read_u32(HAGS_SUBKEY, HAGS_NAME)
+        .map_err(|e| format!("falha ao ler HwSchMode (HKLM): {e}"))?;
+    Ok(ConfigAction::Executable(ReversibleAction::RegistryHklmDword {
+        subkey: HAGS_SUBKEY.into(),
+        name: HAGS_NAME.into(),
+        old,
+        new: Some(HAGS_ON),
+    }))
+}
+
 fn visual_effects() -> Result<ConfigAction, String> {
     const SUBKEY: &str =
         "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects";
     const NAME: &str = "VisualFXSetting";
     let old = tk_platform_win::registry::read_u32(SUBKEY, NAME)
         .map_err(|e| format!("falha ao ler VisualFXSetting: {e}"))?;
+    // NOTA: gravamos `VisualFXSetting=2` (ajustar para melhor desempenho) de forma
+    // reversível. O efeito visual IMEDIATO exigiria broadcast via SystemParametersInfo
+    // (SPI_SETUIEFFECTS / UserPreferencesMask + WM_SETTINGCHANGE) — fora do pipeline
+    // genérico de ReversibleAction sem mudança arquitetural. Limitação intencional
+    // nesta versão: o valor persiste e aplica no próximo logon/restart do Explorer.
+    // NÃO reiniciamos o Explorer automaticamente (evita quebrar a sessão do usuário).
     Ok(ConfigAction::Executable(ReversibleAction::RegistryHkcuDword {
         subkey: SUBKEY.into(),
         name: NAME.into(),
@@ -81,7 +110,7 @@ fn visual_effects() -> Result<ConfigAction, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tk_platform_win::power;
+    use tk_platform_win::{elevation, power};
     use tk_rollback::ReversibleAction;
 
     // ── Power plan configs — resultado depende do sistema ───────────────────
@@ -163,13 +192,42 @@ mod tests {
         }
     }
 
-    // ── Configs HKLM / kernel — sempre Unsupported ──────────────────────────
+    // ── HAGS — depende de elevação ──────────────────────────────────────────
 
     #[test]
-    fn gpu_hardware_scheduling_is_unsupported() {
+    fn gpu_hardware_scheduling_matches_elevation() {
         let action = build_action("gpu_hardware_scheduling").unwrap();
-        assert!(matches!(action, ConfigAction::Unsupported { .. }));
+        if elevation::is_elevated() {
+            assert!(
+                matches!(action, ConfigAction::Executable(ReversibleAction::RegistryHklmDword { .. })),
+                "elevado: HAGS deve ser Executable via HKLM DWORD"
+            );
+        } else {
+            assert!(
+                matches!(action, ConfigAction::Unsupported { .. }),
+                "sem admin: HAGS deve ser Unsupported claro"
+            );
+        }
     }
+
+    #[test]
+    fn gpu_hardware_scheduling_targets_hwschmode_when_elevated() {
+        if !elevation::is_elevated() {
+            return;
+        }
+        let action = build_action("gpu_hardware_scheduling").unwrap();
+        if let ConfigAction::Executable(ReversibleAction::RegistryHklmDword { subkey, name, new, .. }) =
+            action
+        {
+            assert!(subkey.ends_with("GraphicsDrivers"), "subkey deve apontar para GraphicsDrivers");
+            assert_eq!(name, "HwSchMode");
+            assert_eq!(new, Some(2), "HAGS deve ativar (HwSchMode=2)");
+        } else {
+            panic!("HAGS elevado deve ser RegistryHklmDword");
+        }
+    }
+
+    // ── Configs ainda não implementadas — sempre Unsupported ─────────────────
 
     #[test]
     fn timer_resolution_is_unsupported() {
@@ -184,14 +242,16 @@ mod tests {
     }
 
     #[test]
-    fn memory_standby_flush_is_unsupported() {
-        let action = build_action("memory_standby_flush").unwrap();
+    fn hpet_is_unsupported() {
+        let action = build_action("hpet").unwrap();
         assert!(matches!(action, ConfigAction::Unsupported { .. }));
     }
 
     #[test]
-    fn hpet_is_unsupported() {
-        let action = build_action("hpet").unwrap();
+    fn removed_memory_standby_flush_is_unrecognized() {
+        // memory_standby_flush deixou de ser config reversível (ação one-shot).
+        // Continua disponível como comando avulso `ram_flush_standby`.
+        let action = build_action("memory_standby_flush").unwrap();
         assert!(matches!(action, ConfigAction::Unsupported { .. }));
     }
 
@@ -212,7 +272,6 @@ mod tests {
             "gpu_hardware_scheduling",
             "timer_resolution",
             "cpu_core_parking",
-            "memory_standby_flush",
             "hpet",
             "visual_effects_gaming",
         ];

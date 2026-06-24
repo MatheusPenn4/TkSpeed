@@ -110,17 +110,19 @@ impl ProfileEngine {
         let mut pending_reboot = false;
 
         for comp in &profile.compositions {
-            if let Some(cfg) = registry.find(&comp.config_id) {
-                if cfg.meta().requires_reboot {
-                    pending_reboot = true;
-                }
-            }
             match executor::build_action(&comp.config_id)
                 .map_err(|e| format!("Falha ao preparar {}: {e}", comp.config_id))?
             {
                 ConfigAction::Executable(action) => {
                     actions.push(action);
                     applied.push(comp.config_id.clone());
+                    // pending_reboot reflete apenas o que foi REALMENTE aplicado —
+                    // configs skipped (ex.: HAGS sem admin) não marcam reboot.
+                    if let Some(cfg) = registry.find(&comp.config_id) {
+                        if cfg.meta().requires_reboot {
+                            pending_reboot = true;
+                        }
+                    }
                 }
                 ConfigAction::Unsupported { .. } => {
                     skipped.push(comp.config_id.clone());
@@ -289,9 +291,13 @@ mod tests {
         let (engine, _, _dir) = make_engine().await;
         let preview = engine.preview("competitive").unwrap();
         let ids: Vec<&str> = preview.configs.iter().map(|c| c.config_id.as_str()).collect();
+        // P2.4: HAGS + plano de alto desempenho; timer_resolution removido (Unsupported).
         assert!(ids.contains(&"gpu_hardware_scheduling"));
-        assert!(ids.contains(&"timer_resolution"));
         assert!(ids.contains(&"power_plan_high_performance"));
+        assert!(
+            !ids.contains(&"timer_resolution"),
+            "timer_resolution (Unsupported) não deve mais estar em Competitive"
+        );
     }
 
     #[tokio::test]
@@ -408,7 +414,8 @@ mod tests {
 
     #[tokio::test]
     async fn activate_streaming_applies_power_plan_balanced() {
-        // streaming: memory_standby_flush (unsupported) + power_plan_balanced (sempre disponível)
+        // streaming: power_plan_balanced (sempre disponível). memory_standby_flush
+        // foi removido — não deve mais aparecer em applied nem em skipped.
         let (engine, _, _dir) = make_engine().await;
         let result = engine.activate("streaming").await.unwrap();
         assert!(
@@ -416,42 +423,59 @@ mod tests {
             "power_plan_balanced deve estar em applied (sempre disponível)"
         );
         assert!(
-            result.skipped_configs.contains(&"memory_standby_flush".to_string()),
-            "memory_standby_flush deve estar em skipped (kernel call)"
+            !result.applied_configs.contains(&"memory_standby_flush".to_string())
+                && !result.skipped_configs.contains(&"memory_standby_flush".to_string()),
+            "memory_standby_flush não deve mais ser config de perfil"
         );
         engine.deactivate().await.ok();
     }
 
     #[tokio::test]
-    async fn activate_balanced_applies_power_plan_skips_gpu_scheduling() {
-        // balanced: gpu_hardware_scheduling (unsupported HKLM) + power_plan_balanced (disponível)
+    async fn activate_balanced_applies_power_plan() {
+        // balanced: gpu_hardware_scheduling (HKLM — depende de elevação) + power_plan_balanced.
+        // power_plan_balanced é sempre aplicável; o destino de HAGS depende de admin.
         let (engine, _, _dir) = make_engine().await;
         let result = engine.activate("balanced").await.unwrap();
         assert!(
             result.applied_configs.contains(&"power_plan_balanced".to_string()),
             "power_plan_balanced deve ser aplicado"
         );
-        assert!(
-            result.skipped_configs.contains(&"gpu_hardware_scheduling".to_string()),
-            "gpu_hardware_scheduling deve ser skipped (HKLM)"
-        );
+        if tk_platform_win::elevation::is_elevated() {
+            assert!(
+                result.applied_configs.contains(&"gpu_hardware_scheduling".to_string()),
+                "elevado: HAGS deve ser aplicado"
+            );
+        } else {
+            assert!(
+                result.skipped_configs.contains(&"gpu_hardware_scheduling".to_string()),
+                "sem admin: HAGS deve ser skipped"
+            );
+        }
         engine.deactivate().await.ok();
     }
 
     #[tokio::test]
-    async fn activate_competitive_skips_hklm_configs() {
-        // competitive: gpu_hw e timer_resolution são sempre HKLM → sempre skipped
+    async fn activate_competitive_handles_hags_by_elevation() {
+        // P2.4: competitive = gpu_hardware_scheduling + power_plan_high_performance
+        // (timer_resolution removido). HAGS é HKLM → applied só com admin, senão skipped.
         let (engine, _, _dir) = make_engine().await;
         let result = engine.activate("competitive").await.unwrap();
+        if tk_platform_win::elevation::is_elevated() {
+            assert!(
+                result.applied_configs.contains(&"gpu_hardware_scheduling".to_string()),
+                "elevado: HAGS deve ser aplicado"
+            );
+        } else {
+            assert!(
+                result.skipped_configs.contains(&"gpu_hardware_scheduling".to_string()),
+                "sem admin: HAGS deve ser skipped"
+            );
+        }
         assert!(
-            result.skipped_configs.contains(&"gpu_hardware_scheduling".to_string()),
-            "gpu_hardware_scheduling deve ser skipped (HKLM)"
+            !result.applied_configs.contains(&"timer_resolution".to_string())
+                && !result.skipped_configs.contains(&"timer_resolution".to_string()),
+            "timer_resolution não deve mais fazer parte de Competitive"
         );
-        assert!(
-            result.skipped_configs.contains(&"timer_resolution".to_string()),
-            "timer_resolution deve ser skipped (HKLM)"
-        );
-        // power_plan_high_performance pode ou não estar disponível — apenas testar que não dá erro
         engine.deactivate().await.ok();
     }
 
@@ -480,11 +504,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn activate_competitive_sets_pending_reboot() {
+    async fn activate_competitive_pending_reboot_matches_elevation() {
         let (engine, _, _dir) = make_engine().await;
         let result = engine.activate("competitive").await.unwrap();
-        // competitive tem gpu_hardware_scheduling que requires_reboot = true
-        assert!(result.pending_reboot);
+        // competitive tem gpu_hardware_scheduling (requires_reboot=true), mas HAGS só
+        // é APLICADO com admin. pending_reboot reflete o que foi de fato aplicado.
+        if tk_platform_win::elevation::is_elevated() {
+            assert!(result.pending_reboot, "elevado: HAGS aplicado → pending_reboot");
+        } else {
+            assert!(!result.pending_reboot, "sem admin: HAGS skipped → sem pending_reboot");
+        }
         engine.deactivate().await.ok();
     }
 

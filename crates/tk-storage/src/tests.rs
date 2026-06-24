@@ -82,8 +82,8 @@ mod migration_tests {
 
 #[cfg(test)]
 mod session_source_tests {
-    use crate::{open, session_source, PerfRepo, OptRepo, SnapshotRepo};
-    use tk_contracts::{BenchmarkResult, OptDecision, OptimizationRunInfo, PerfComparison};
+    use crate::{open, session_source, PerfRepo, OptRepo};
+    use tk_contracts::{BenchmarkResult, OptDecision, OptimizationRunInfo};
 
     fn dummy_result(kind: &str) -> BenchmarkResult {
         BenchmarkResult {

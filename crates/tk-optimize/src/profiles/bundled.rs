@@ -8,21 +8,22 @@ fn entry(config_id: &str) -> CompositionEntry {
 }
 
 /// Competitive FPS — frame time, FPS, latência de input.
+/// `timer_resolution` removido (P2.4): era Unsupported no executor → nunca aplicava,
+/// só poluía os configs "skipped" e criava expectativa falsa. Volta quando implementado.
 pub fn competitive() -> ProfileDefinition {
     ProfileDefinition {
         id: "competitive".into(),
         name: "Competitive FPS".into(),
-        description: Some("Maximiza frame time consistente, FPS e latência de input.".into()),
+        description: Some("Prioriza desempenho de GPU e CPU para FPS e frame time consistentes.".into()),
         icon: Some("zap".into()),
         is_custom: false,
         compositions: vec![
             entry("gpu_hardware_scheduling"),
-            entry("timer_resolution"),
             entry("power_plan_high_performance"),
         ],
         suite_id: "complete".into(),
         requires_fps: true,
-        bundle_version: 1,
+        bundle_version: 2,
     }
 }
 
@@ -44,21 +45,28 @@ pub fn balanced() -> ProfileDefinition {
     }
 }
 
-/// Streaming — multitarefa, CPU multi-thread, memória.
+/// Energia Equilibrada (id histórico: "streaming").
+/// P2.4: renomeado para refletir o que realmente faz. Após a remoção do
+/// `memory_standby_flush` (irreversível), este perfil aplica APENAS o plano de
+/// energia Balanceado do Windows — não altera GPU/CPU nem "otimiza encoding".
+/// Descrição honesta para Beta Fechado (Opção B/C). `id` preservado para não
+/// quebrar evidência/histórico já gravados.
 pub fn streaming() -> ProfileDefinition {
     ProfileDefinition {
         id: "streaming".into(),
-        name: "Streaming".into(),
-        description: Some("Otimizado para multitarefa, encoding e gerenciamento de RAM.".into()),
+        name: "Energia Equilibrada".into(),
+        description: Some(
+            "Mantém o plano de energia Balanceado do Windows. Não altera GPU nem CPU."
+                .into(),
+        ),
         icon: Some("radio".into()),
         is_custom: false,
         compositions: vec![
-            entry("memory_standby_flush"),
             entry("power_plan_balanced"),
         ],
         suite_id: "complete".into(),
         requires_fps: false,
-        bundle_version: 1,
+        bundle_version: 3,
     }
 }
 

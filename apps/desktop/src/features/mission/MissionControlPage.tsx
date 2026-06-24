@@ -1114,9 +1114,9 @@ function ApplyResultBanner({ result }: { result: ProfileApplyResult }) {
     return (
       <div className="mc-apply-result warn">
         <strong>
-          <AxIcon name="alert" size={13} /> Perfil revertido
+          <AxIcon name="alert" size={13} /> Sem ganho medido
         </strong>
-        <p>Nenhum ganho detectado — estado anterior restaurado automaticamente.</p>
+        <p>{result.message}</p>
       </div>
     );
   }

@@ -161,17 +161,21 @@ impl MeasurementPipeline {
             .await
             .map_err(|e| e.to_string())?;
 
-        // 8. Auto-reverter em caso de falha confiável
-        if matches!(evidence, EvidenceOutcome::Failure) {
-            self.profile_engine().deactivate().await.ok();
-        }
-
+        // 8. Perfis são MODOS escolhidos pelo usuário: Apply → Persist.
+        //    NÃO auto-revertemos por benchmark inferior (ex.: Power Saver reduz
+        //    desempenho por design). A evidência (record_success/record_failure já
+        //    feito em process_comparison) ainda alimenta o scoring do Advisor — um
+        //    perfil que mede perda recebe score baixo e deixa de ser recomendado,
+        //    sem ser arrancado de baixo do usuário. Otimizações (tk-optimize/engine.rs)
+        //    seguem com seu próprio gate Keep/Revert, inalterado.
         let msg = match &evidence {
             EvidenceOutcome::Success { gain } => {
                 format!("Perfil ativo com evidência. Ganho confirmado: +{gain:.1}%")
             }
             EvidenceOutcome::Failure => {
-                "Resultado negativo — perfil revertido automaticamente.".into()
+                "Perfil mantido. O benchmark não mostrou ganho neste hardware \
+                 (modos como Economia reduzem o desempenho por design)."
+                    .into()
             }
             EvidenceOutcome::Inconclusive => {
                 "Medição inconclusiva. Perfil ativo sem evidência confirmada ainda.".into()
@@ -496,16 +500,22 @@ mod tests {
 
     #[tokio::test]
     async fn activate_with_measure_pending_reboot_skips_after_benchmark() {
-        // balanced tem gpu_hardware_scheduling (requires_reboot=true) → pending_reboot
+        // balanced inclui gpu_hardware_scheduling (requires_reboot=true), mas HAGS só
+        // é aplicado com admin. O caminho PendingReboot só é exercitável quando elevado.
         let (pipeline, _, _dir) = make_pipeline().await;
         let result = pipeline.activate_with_measure("balanced").await.unwrap();
 
-        assert!(result.pending_reboot, "balanced deve ter pending_reboot=true");
-        assert!(result.after_session_id.is_none(), "pending_reboot deve bloquear after benchmark");
-        assert!(
-            matches!(result.evidence_recorded, EvidenceOutcome::PendingReboot),
-            "evidence deve ser PendingReboot"
-        );
+        if tk_platform_win::elevation::is_elevated() {
+            assert!(result.pending_reboot, "elevado: HAGS aplicado → pending_reboot");
+            assert!(result.after_session_id.is_none(), "pending_reboot deve bloquear after benchmark");
+            assert!(
+                matches!(result.evidence_recorded, EvidenceOutcome::PendingReboot),
+                "evidence deve ser PendingReboot"
+            );
+        } else {
+            // Sem admin: HAGS skipped, balanced aplica só power_plan_balanced → mede normalmente.
+            assert!(!result.pending_reboot, "sem admin: nenhuma config de reboot aplicada");
+        }
         assert!(result.before_session_id.is_some(), "before benchmark deve ter sido rodado");
 
         pipeline.profile_engine().deactivate().await.ok();
@@ -532,6 +542,28 @@ mod tests {
 
         assert_eq!(before_sid, result.before_session_id);
         assert_eq!(after_sid, result.after_session_id);
+
+        pipeline.profile_engine().deactivate().await.ok();
+    }
+
+    #[tokio::test]
+    async fn activate_with_measure_power_saver_persists_even_with_inferior_benchmark() {
+        // Power Saver é um MODO: reduz desempenho por design. O benchmark "depois"
+        // tende a medir perda/sem-mudança, mas o perfil deve PERMANECER ativo
+        // (Apply → Persist). Antes do P2.3 isso auto-revertia.
+        let (pipeline, db, _dir) = make_pipeline().await;
+        let result = pipeline.activate_with_measure("power_saver").await.unwrap();
+
+        // power_saver não tem config de reboot → mede normalmente (nunca PendingReboot).
+        assert!(!result.pending_reboot);
+
+        // Independente do veredito do benchmark, o estado do perfil continua ativo.
+        let state = ProfileRepo::new(db).get_state("default").await.unwrap();
+        assert_eq!(
+            state.profile_id.as_deref(),
+            Some("power_saver"),
+            "perfil-modo deve persistir mesmo com benchmark inferior (sem auto-revert)"
+        );
 
         pipeline.profile_engine().deactivate().await.ok();
     }

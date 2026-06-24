@@ -318,10 +318,10 @@ mod imp {
             let name = install_dir
                 .replace('/', "\\")
                 .split('\\')
-                .last()
+                .next_back()
                 .unwrap_or("Jogo Ubisoft")
                 .to_string();
-            let exe = name.to_lowercase().replace(' ', "").replace('-', "");
+            let exe = name.to_lowercase().replace([' ', '-'], "");
             games.push(InstalledGame {
                 id: format!("ubisoft:{}", gid),
                 name,
@@ -353,7 +353,7 @@ mod imp {
             let exe = exe_raw
                 .replace('/', "\\")
                 .split('\\')
-                .last()
+                .next_back()
                 .unwrap_or("game")
                 .trim_end_matches(".exe")
                 .to_lowercase()
